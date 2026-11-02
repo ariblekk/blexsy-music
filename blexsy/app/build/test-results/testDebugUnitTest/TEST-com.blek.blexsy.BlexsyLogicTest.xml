@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.blek.blexsy.BlexsyLogicTest" tests="67" skipped="0" failures="0" errors="0" timestamp="2026-11-02T06:41:56.738Z" hostname="IDK" time="0.376">
+  <properties/>
+  <testcase name="testComputeJumpOrderCrossingUserQueue" classname="com.blek.blexsy.BlexsyLogicTest" time="0.028"/>
+  <testcase name="testResumePositionClamping" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testMergeUniqueCapsRadioQueueWithoutDroppingCurrent" classname="com.blek.blexsy.BlexsyLogicTest" time="0.009"/>
+  <testcase name="testPrimaryArtistRefResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testThemeModeOptionsAndColors" classname="com.blek.blexsy.BlexsyLogicTest" time="0.032"/>
+  <testcase name="testResolveHeroTracksEvenDistributionAndNoRecents" classname="com.blek.blexsy.BlexsyLogicTest" time="0.008"/>
+  <testcase name="testTranslationOpacityResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testSlangCopyDefaults" classname="com.blek.blexsy.BlexsyLogicTest" time="0.002"/>
+  <testcase name="testParseWordToWordLrc" classname="com.blek.blexsy.BlexsyLogicTest" time="0.013"/>
+  <testcase name="testNormalizeQueueStartsAtSelectedTrackAndDedupes" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testPlayAtIndexSlicesQueueAndRemovesPreviousTracks" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testArtistReleasesAndSimilarArtists" classname="com.blek.blexsy.BlexsyLogicTest" time="0.002"/>
+  <testcase name="testTrackMultiArtistResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testDuetAlignmentMarkerParsing" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testLauncherAliasOptions" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testRankAttributes" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testSkipDeadAirOutroThreshold" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testPlaylistQueueNotCappedAtTen" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testQueueLoaderVisibilityCondition" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testLyricScrollDeltaCalculation" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testSearchRadioQueueBehavior" classname="com.blek.blexsy.BlexsyLogicTest" time="0.043"/>
+  <testcase name="testContributorsFallback" classname="com.blek.blexsy.BlexsyLogicTest" time="0.006"/>
+  <testcase name="testArtistCanvasServiceBlankReturnsNull" classname="com.blek.blexsy.BlexsyLogicTest" time="0.007"/>
+  <testcase name="testArtistFollowerTextFormatting" classname="com.blek.blexsy.BlexsyLogicTest" time="0.003"/>
+  <testcase name="testOverlayControlsVisibility" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testCreditsCacheKeyAndTtl" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testParseTtmlWordToWord" classname="com.blek.blexsy.BlexsyLogicTest" time="0.049"/>
+  <testcase name="testSearchResultArtists" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testShouldRefillRadioUsesUpcomingTracks" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testPlaylistChunkPagination" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testFindUserQueueInsertionIndex" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testGenreDetailScreenModel" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testFormatHistoryDate" classname="com.blek.blexsy.BlexsyLogicTest" time="0.005"/>
+  <testcase name="testSeenRadioIdsStayBounded" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testLrcMetadataAndBomSanitization" classname="com.blek.blexsy.BlexsyLogicTest" time="0.002"/>
+  <testcase name="testControlsVisibilityOnScroll" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testArtistRefs" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testVideoTitleAndArtistCleaning" classname="com.blek.blexsy.BlexsyLogicTest" time="0.098"/>
+  <testcase name="testTrackRankResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testDicebearAvatarUrlEncoding" classname="com.blek.blexsy.BlexsyLogicTest" time="0.002"/>
+  <testcase name="testLyricsLoadingStateResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testAuthFormValidation" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testSpotifyChartAndNewReleasesParsingAndTtl" classname="com.blek.blexsy.BlexsyLogicTest" time="0.02"/>
+  <testcase name="testResolveHeroTracksWeightedScoringBoostsFrequentPlays" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testFullPlayerViewResolution" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testUiKitDesignSystemDefaults" classname="com.blek.blexsy.BlexsyLogicTest" time="0.003"/>
+  <testcase name="testSafeScrollPadding" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testNormalizeQueuePrependsMissingTrack" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testLyricsControlsInactivityTimeout" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testAlbumSummaryCreation" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testRadioRelevanceUsesGenreAndCountryNotTitle" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testScrubberFractionClamping" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testExpressiveLoaderMorphRadius" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testQueueTierAssignmentAndIdPreservation" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testPeriodicThrottleInterval" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testNormalizeRawGithubUrl" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testInstrumentalGapsDetection" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testParseLrcAndStrip" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testFilterDisplayedArtistsOnlyShowsWhenTypingArtist" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testRadioRetryDelayBacksOffAndCaps" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testTrackDurationLabel" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testDisplaySourceMapping" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testClearUserQueue" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testArtistDetailSerializationAndCache" classname="com.blek.blexsy.BlexsyLogicTest" time="0.016"/>
+  <testcase name="testLyricsFloatingPillVisibility" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <testcase name="testBackgroundVocalsSeparation" classname="com.blek.blexsy.BlexsyLogicTest" time="0.0"/>
+  <testcase name="testToHighResArtwork" classname="com.blek.blexsy.BlexsyLogicTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>

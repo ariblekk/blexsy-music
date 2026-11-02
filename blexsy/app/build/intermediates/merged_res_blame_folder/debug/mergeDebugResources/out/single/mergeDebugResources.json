@@ -1,0 +1,150 @@
+[
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/drawable_collapse.jpg.flat",
+        "source": "com.blek.blexsy.app-main-53:/drawable/collapse.jpg"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-mdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-mdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/drawable_lyrics_empty.gif.flat",
+        "source": "com.blek.blexsy.app-main-53:/drawable/lyrics_empty.gif"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_poppins_bold.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/poppins_bold.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-hdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-hdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_poppins_semibold.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/poppins_semibold.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.blek.blexsy.app-main-53:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxxhdpi_ic_launcher_background.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxxhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_deezer_bold.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/deezer_bold.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_poppins_extrabold.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/poppins_extrabold.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xhdpi_ic_launcher_background.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxhdpi_ic_launcher_background.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-mdpi_ic_launcher_background.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-mdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-hdpi_ic_launcher_background.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-hdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxxhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_poppins_medium.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/poppins_medium.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_deezer_extrabold.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/deezer_extrabold.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/font_poppins_regular.ttf.flat",
+        "source": "com.blek.blexsy.app-main-53:/font/poppins_regular.ttf"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/drawable-v24_ic_launcher_foreground.xml.flat",
+        "source": "com.blek.blexsy.app-main-53:/drawable-v24/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.blek.blexsy.app-debug-51:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.blek.blexsy.app-main-53:/mipmap-xhdpi/ic_launcher_round.png"
+    }
+]

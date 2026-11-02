@@ -1,0 +1,359 @@
+<resources>
+    <!-- App & Launcher -->
+    <string name="app_name">BLEXSY</string>
+    <string name="launcher_blexsy">Blexsy</string>
+    <string name="launcher_spotify">Spotify</string>
+    <string name="launcher_music">Music</string>
+
+    <!-- Navigation & App Bar -->
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_profile">Profile</string>
+    <string name="tab_your_stash">Your Stash</string>
+    <string name="masthead_menu">Menu</string>
+    <string name="action_back">Back</string>
+
+    <!-- Profile Screen -->
+    <string name="profile_title">PROFILE</string>
+    <string name="profile_stat_spins">Spins</string>
+    <string name="profile_stat_hearts">Hearts</string>
+    <string name="profile_stat_crates">Crates</string>
+    <string name="profile_default_user">Blexsy User</string>
+    <string name="profile_local_account">Local Account</string>
+    <string name="profile_account_title">Blexsy Account</string>
+    <string name="profile_account_desc">Lock in to sync your crates and liked tracks across devices</string>
+    <string name="profile_lock_in">Lock in</string>
+    <string name="history_date_today">Today</string>
+    <string name="history_date_yesterday">Yesterday</string>
+    <string name="history_date_recent">Recent</string>
+    <string name="profile_spins_empty_title">Zero spins yet</string>
+    <string name="profile_spins_empty_desc">Tracks you bump will show up right here</string>
+    <string name="profile_hearts_empty_title">No liked heat yet</string>
+    <string name="profile_hearts_empty_desc">Hit that heart icon on bangers you love</string>
+    <string name="profile_crates_empty_title">Zero crates yet. Cook one up!</string>
+    <string name="profile_crates_empty_desc">Cook up your crates right in the stash</string>
+    <string name="profile_crate_bangers">Crate • %1$d bangers</string>
+    <string name="profile_more_settings">Settings</string>
+    <string name="profile_more_logout">Bail Out (Sign Out)</string>
+    <string name="profile_logout_title">Bail Out?</string>
+    <string name="profile_logout_desc">Are you sure you want to sign out from your Blexsy account?</string>
+    <string name="profile_logout_confirm">Bail out</string>
+    <string name="profile_logout_dismiss">Stay</string>
+    <string name="profile_sign_out">Sign Out</string>
+    <string name="profile_cancel">Cancel</string>
+
+    <!-- Auth Screen -->
+    <string name="auth_title_digits">Drop the digits</string>
+    <string name="auth_title_signup">Join the club</string>
+    <string name="auth_title_login">Welcome back!</string>
+    <string name="auth_desc_digits">Sent a 6-digit code to %1$s. Go check it!</string>
+    <string name="auth_desc_login">No passwords, no stress — we\'ll shoot a quick code to your email.</string>
+    <string name="auth_tab_login">Log in</string>
+    <string name="auth_tab_signup">Sign up</string>
+    <string name="auth_label_name">what\'s your name?</string>
+    <string name="auth_placeholder_name">name</string>
+    <string name="auth_chip_local_name">Rock with local name: </string>
+    <string name="auth_label_email">drop your email</string>
+    <string name="auth_placeholder_email">name@example.com</string>
+    <string name="auth_label_otp">passcode / digits</string>
+    <string name="auth_placeholder_otp">000000</string>
+    <string name="auth_wrong_email">Wrong email?</string>
+    <string name="auth_resend_cooldown">Resend (%1$ds)</string>
+    <string name="auth_resend_code">Resend code</string>
+    <string name="auth_button_lock_in">Lock it in</string>
+    <string name="auth_button_send_code">Send code</string>
+    <string name="auth_button_guest">Just browsing (guest)</string>
+    <string name="auth_error_invalid_email">Please enter a valid email first.</string>
+    <string name="auth_error_empty_name">Please enter your name.</string>
+    <string name="auth_error_code_length">The code must be 6 digits.</string>
+    <string name="auth_error_resend_failed">Could not resend code.</string>
+    <string name="auth_error_send_failed">Failed to send code.</string>
+    <string name="auth_error_verify_failed">That code did not work.</string>
+
+    <!-- Home Screen & Dialogs -->
+    <string name="action_cook_crate">Cook up a crate</string>
+    <string name="action_port_spotify">Port Spotify crate</string>
+    <string name="dialog_create_crate_title">Cook Up a Crate</string>
+    <string name="dialog_create_crate_placeholder">Give it a fire name</string>
+    <string name="dialog_create_crate_confirm">Cook it</string>
+    <string name="dialog_create_crate_dismiss">Nah</string>
+    <string name="dialog_port_crate_title">Port Spotify Crate</string>
+    <string name="dialog_port_crate_desc">Drop that Spotify crate link or ID right here.</string>
+    <string name="dialog_port_crate_placeholder">https://open.spotify.com/playlist/...</string>
+    <string name="dialog_port_crate_confirm">Port it</string>
+    <string name="dialog_port_crate_cancel">Cancel</string>
+    <string name="dialog_port_crate_invalid">Enter a valid playlist link or ID.</string>
+
+    <!-- Library Tab -->
+    <string name="library_your_stash">Your Stash</string>
+    <string name="library_liked_bangers">Liked Bangers</string>
+    <string name="library_kicker_stash">STASH</string>
+    <string name="library_title_crates">Your Crates</string>
+    <string name="library_crates_empty">Zero crates yet. Cook one up!</string>
+
+    <!-- Search Tab & Sections -->
+    <string name="search_title">Search</string>
+    <string name="search_bar_placeholder">What\'re we bumping today?</string>
+    <string name="search_field_placeholder">Search tracks, artists, or vibes...</string>
+    <string name="search_recent_digs">Recent digs</string>
+    <string name="search_clear_history">Clear \'em</string>
+    <string name="search_zero_hits">Zero hits for \u201C%1$s\u201D. Typo or too underground?</string>
+    <string name="search_artist">Artist</string>
+    <string name="search_artists">Artists</string>
+    <string name="search_tracks">Tracks</string>
+
+    <!-- Listen Now Tab -->
+    <string name="listen_charts_kicker">THE CHARTS</string>
+    <string name="listen_charts_title">Top 50 Indo Heat</string>
+    <string name="listen_drops_kicker">FRESH DROPS</string>
+    <string name="listen_drops_title">New Releases</string>
+    <string name="listen_repeat_kicker">ON REPEAT</string>
+    <string name="listen_repeat_title">Recent Spins</string>
+    <string name="listen_hearts_kicker">YOUR HEARTS</string>
+    <string name="listen_hearts_title">Liked Bangers</string>
+    <string name="listen_pick_resume">RESUME THE SPIN</string>
+    <string name="listen_pick_now_spinning">NOW SPINNING</string>
+    <string name="listen_pick_artist">ARTIST PICK</string>
+    <string name="listen_action_see_all">SEE ALL</string>
+    <string name="listen_action_show_all">SHOW ALL</string>
+    <string name="listen_action_run_it_back">RUN IT BACK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">SETTINGS</string>
+    <string name="settings_group_sound">SOUND &amp; BITRATE</string>
+    <string name="settings_bitrate_title">Stream Bitrate</string>
+    <string name="settings_bitrate_crisp">Crisp (Best Sound)</string>
+    <string name="settings_bitrate_balanced">Balanced (160 kbps)</string>
+    <string name="settings_bitrate_data_saver">Data Saver (96 kbps)</string>
+    <string name="settings_equalizer_title">Equalizer Tuning</string>
+    <string name="settings_equalizer_tuned">Tuned in • %1$s</string>
+    <string name="settings_equalizer_flat">Flat (Off)</string>
+    <string name="settings_group_looks">LOOKS &amp; DRIP</string>
+    <string name="settings_app_tag_title">App Tag</string>
+    <string name="settings_theme_shade_title">Theme Shade</string>
+    <string name="settings_accent_drip_title">Accent Drip</string>
+    <string name="settings_accent_drip_desc">Signature glow for buttons &amp; highlights</string>
+    <string name="settings_language_title">App Language</string>
+    <string name="settings_language_dialog_title">Pick App Language</string>
+    <string name="settings_language_system">System Default</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_id">Bahasa Indonesia</string>
+    <string name="settings_group_cache">STASH &amp; CACHE</string>
+    <string name="settings_cache_cap_title">Stash Cache Cap</string>
+    <string name="settings_cache_cap_desc">%1$d GB (Old spins get tossed when capped)</string>
+    <string name="settings_flush_cache_title">Flush Audio Cache</string>
+    <string name="settings_flush_cache_holding">Holding: %1$s</string>
+    <string name="settings_flush_cache_dialog_title">Flush Audio Cache?</string>
+    <string name="settings_flush_cache_dialog_desc">Dump %1$s of cached bangers? You\'ll stream them fresh next spin.</string>
+    <string name="settings_flush_cache_dialog_confirm">Dump Stash</string>
+    <string name="settings_flush_cache_dialog_dismiss">Keep Stash</string>
+    <string name="settings_accent_drip_dialog_title">Pick Accent Drip</string>
+    <string name="settings_group_playback">PLAYBACK FLOW</string>
+    <string name="settings_autoplay_title">Autoplay Similar</string>
+    <string name="settings_autoplay_desc">Keep the vibe alive with similar bangers when your queue runs dry</string>
+    <string name="settings_keep_playing_title">Keep Spinning When Closed</string>
+    <string name="settings_keep_playing_desc">Keep music bumping in background notification even when app is swiped away</string>
+    <string name="settings_save_state_title">Save Last Spin State</string>
+    <string name="settings_save_state_desc">Pick up right where you left off on your next session</string>
+    <string name="settings_skip_silence_title">Skip Dead Air</string>
+    <string name="settings_skip_silence_desc">Skip trailing silence at the end of bangers so the vibe never drops</string>
+    <string name="settings_group_lyrics">LYRICS &amp; VIBES</string>
+    <string name="settings_translate_lyrics_title">Translate Lyrics</string>
+    <string name="settings_translate_lyrics_desc">Auto-translate foreign bars into Indonesian</string>
+    <string name="settings_keep_screen_lit_title">Keep Screen Lit</string>
+    <string name="settings_keep_screen_lit_desc">Keep display awake while reading synced lyrics</string>
+
+    <!-- Player Controls & Sheets -->
+    <string name="player_lyrics">Lyrics</string>
+    <string name="player_queue">Queue</string>
+    <string name="player_play">Play</string>
+    <string name="player_remove_favorite">Remove from Liked Bangers</string>
+    <string name="player_save_favorite">Save to Liked Bangers</string>
+    <string name="player_add_to_playlist">Add to playlist</string>
+    <string name="player_queue_next">Queue up next</string>
+    <string name="player_toss_queue">Toss in queue</string>
+    <string name="player_start_radio">Start radio</string>
+    <string name="player_view_artist">View artist</string>
+    <string name="player_view_album">View album</string>
+    <string name="player_select_artist_title">Select artist</string>
+    <string name="player_track_credits">Track credits</string>
+    <string name="player_credits_subtitle">Show songwriters, producers, and lyrics sources</string>
+    <string name="player_credits_source">Source</string>
+    <string name="player_credits_not_found">No credits found for this track.</string>
+    <string name="player_credits_unavailable">Credits aren\'t available yet.</string>
+    <string name="player_equalizer">Equalizer</string>
+    <string name="player_equalizer_subtitle">Audio frequency controls &amp; presets</string>
+    <string name="player_sleep_timer_active">Sleep timer (Active)</string>
+    <string name="player_sleep_timer">Sleep timer</string>
+    <string name="player_share">Share</string>
+
+    <!-- Playlist Management -->
+    <string name="playlist_add_to_title">Add to playlist</string>
+    <string name="playlist_empty_title">No playlists yet</string>
+    <string name="playlist_tracks_count">%1$d tracks</string>
+    <string name="playlist_track_added">Added</string>
+    <string name="playlist_create_new">Create playlist</string>
+
+    <!-- Common Actions & Types -->
+    <string name="action_loading">Loading...</string>
+    <string name="action_see_all">SEE ALL</string>
+    <string name="action_less">LESS</string>
+    <string name="action_show_all">Show all</string>
+    <string name="action_play_all">Play all</string>
+    <string name="action_show_less">Show less</string>
+    <string name="type_playlist">Playlist</string>
+    <string name="rank_new">NEW</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="a11y_menu">Menu</string>
+    <string name="a11y_more_options">More options</string>
+    <string name="a11y_verified">Verified</string>
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_playing">Playing</string>
+    <string name="a11y_avatar">Avatar</string>
+    <string name="a11y_profile_avatar">Profile avatar</string>
+    <string name="a11y_play_pause">Play/Pause</string>
+    <string name="a11y_next">Next</string>
+    <string name="a11y_previous">Previous</string>
+    <string name="a11y_repeat">Repeat</string>
+    <string name="a11y_menu_playlist">Menu playlist</string>
+    <string name="a11y_profile_options">Profile options</string>
+    <string name="a11y_volume_down">Volume down</string>
+    <string name="a11y_volume_up">Volume up</string>
+    <string name="a11y_rank_up">Rank up</string>
+    <string name="a11y_rank_down">Rank down</string>
+    <string name="a11y_keep_screen_on">Keep screen on</string>
+    <string name="a11y_translate_lyrics">Translate lyrics</string>
+    <string name="a11y_view_profile">View profile</string>
+    <string name="a11y_open_link">Open link</string>
+    <string name="a11y_clear">Clear</string>
+    <string name="a11y_reorder">Reorder</string>
+    <string name="a11y_loading">Loading</string>
+
+    <!-- Album Detail Screen -->
+    <string name="album_error_failed">Failed to load album</string>
+    <string name="album_meta_tracks"> • %1$s • %2$d tracks</string>
+
+    <!-- Artist Detail Screen -->
+    <string name="artist_error_failed">Failed to load artist</string>
+    <string name="artist_kicker_favorites">CROWD FAVORITES</string>
+    <string name="artist_title_top_tracks">Top tracks</string>
+    <string name="artist_kicker_catalog">CATALOG</string>
+    <string name="artist_title_releases">Releases</string>
+    <string name="artist_title_albums">Albums</string>
+    <string name="artist_title_singles">Singles &amp; EPs</string>
+    <string name="artist_tab_albums">Albums</string>
+    <string name="artist_tab_singles">Singles &amp; EPs</string>
+    <string name="artist_kicker_curated">CURATED CRATES</string>
+    <string name="artist_title_playlists">Artist Playlists</string>
+    <string name="artist_kicker_similar">SIMILAR VIBES</string>
+    <string name="artist_title_similar">Fans Also Dig</string>
+    <string name="artist_kicker_backstory">BACKSTORY</string>
+    <string name="artist_title_meet">Meet the artist</string>
+
+    <!-- Playlist Detail Screen -->
+    <string name="playlist_kicker">PLAYLIST</string>
+    <string name="playlist_tracks_bangers">%1$d bangers</string>
+    <string name="playlist_delete_content_desc">Delete playlist</string>
+    <string name="playlist_delete_dialog_title">Scrap this playlist?</string>
+    <string name="playlist_delete_dialog_desc">Playlist “%1$s” is getting scrapped forever. You sure?</string>
+    <string name="playlist_delete_dialog_confirm">Scrap it</string>
+    <string name="playlist_delete_dialog_dismiss">Nah, keep it</string>
+
+    <!-- Genre Detail Screen -->
+    <string name="genre_error_failed">Failed to load genre category</string>
+    <string name="genre_kicker">CATEGORY</string>
+    <string name="genre_playlists_count">%1$d playlists</string>
+    <string name="genre_empty">No playlists found in this category</string>
+
+    <!-- Sleep Timer Dialog -->
+    <string name="sleep_timer_stop_audio_in">Stop audio in</string>
+    <string name="sleep_timer_minutes">%1$d minutes</string>
+    <string name="sleep_timer_1_hour">1 hour</string>
+    <string name="sleep_timer_end_of_track">End of track</string>
+    <string name="sleep_timer_turn_off">Turn off timer</string>
+
+    <!-- Equalizer Screen -->
+    <string name="eq_tab_graph">Graph</string>
+    <string name="eq_tab_bands">Bands</string>
+    <string name="eq_off">Off</string>
+    <string name="eq_preset_custom">Custom</string>
+    <string name="eq_presets_header">PRESETS</string>
+    <string name="eq_reset">Reset</string>
+    <string name="eq_freq_response_header">FREQUENCY RESPONSE</string>
+    <string name="eq_filter_low_shelf">Low Shelf</string>
+    <string name="eq_filter_peak">Peak</string>
+    <string name="eq_filter_high_shelf">High Shelf</string>
+    <string name="eq_gain">Gain</string>
+    <string name="eq_q_factor">Q Factor (Width)</string>
+    <string name="eq_bands_header">BANDS (SWEEP TO DRAW)</string>
+    <string name="eq_fine_tuning_header">FINE TUNING</string>
+    <string name="eq_preamp">Preamp</string>
+
+    <!-- Queue & Lyrics -->
+    <string name="queue_empty">Queue is empty. Toss in some bangers!</string>
+    <string name="queue_context_radio">Radio</string>
+    <string name="queue_context_playlist">Playlist</string>
+    <string name="queue_up_next">Up next in queue</string>
+    <string name="queue_next_from">Next from: %1$s</string>
+    <string name="queue_clear">Clear</string>
+    <string name="queue_remove_content_desc">Remove from queue</string>
+    <string name="queue_based_on">Based on %1$s</string>
+    <string name="queue_based_on_playlist">Based on playlist</string>
+    <string name="queue_based_on_playlist_name">Based on playlist • %1$s</string>
+    <string name="player_header_now_playing">Now playing</string>
+    <string name="player_header_lyrics">Lyrics</string>
+    <string name="player_header_queue">Queue</string>
+    <string name="player_header_radio">Radio</string>
+    <string name="lyrics_unavailable_desc">Lyrics unavailable</string>
+    <string name="lyrics_empty_vibes">No lyrics for this one. Just vibe!</string>
+    <string name="lyrics_source">Lyrics source: %1$s</string>
+    <string name="lyrics_translating">Translating lyrics...</string>
+    <string name="lyrics_resume_autoscroll">Resume autoscroll</string>
+
+    <!-- Onboarding Flow -->
+    <string name="onboarding_welcome_title">Welcome to\nblexsy!</string>
+    <string name="onboarding_welcome_desc">Bump your tracks, own your vibe.\nNo cap.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_lock_in">Lock in</string>
+    <string name="onboarding_profile_title">Let\'s cook your profile!</string>
+    <string name="onboarding_name_label">what\'s your name?</string>
+    <string name="onboarding_name_placeholder">name</string>
+    <string name="onboarding_joined_at">joined at %1$s</string>
+    <string name="onboarding_privacy_note">Zero tracking, zero sketchy data selling. All local.</string>
+    <string name="onboarding_next_artists">Next: Heavy Hitters</string>
+    <string name="onboarding_already_account">Already got an account? Lock in</string>
+    <string name="onboarding_artists_selected_count">%1$d/3 selected</string>
+    <string name="onboarding_artists_title">Last one: Pick your heavy hitters</string>
+    <string name="onboarding_artists_desc">Choose at least 3 artists to cook your feed.</string>
+    <string name="onboarding_search_artist_placeholder">Search artist...</string>
+    <string name="onboarding_button_proceed">Lock in (%1$d selected)</string>
+    <string name="onboarding_button_pick_min">Pick at least 3 (%1$d/3)</string>
+    <string name="onboarding_preview_label">YOUR PROFILE</string>
+    <string name="onboarding_member_since">MEMBER SINCE %1$s</string>
+
+    <!-- Search Screen -->
+    <string name="search_kicker_discover">DISCOVER</string>
+    <string name="search_title_browse_all">Dig through all</string>
+
+    <!-- Settings Additional -->
+    <string name="settings_about_desc">About</string>
+    <string name="settings_about_version">Version %1$s (%2$d)</string>
+    <string name="settings_about_tagline">Bump your tracks, own your vibe. No cap.</string>
+    <string name="settings_app_tag_dialog_title">Pick App Tag</string>
+    <string name="settings_theme_shade_dialog_title">Pick Theme Shade</string>
+    <string name="settings_about_squad">THE SQUAD</string>
+    <string name="settings_about_credits">PROPS &amp; CREDITS</string>
+    <string name="settings_about_footer">Crafted for pure sound and slick bangers. Zero ads, infinite spins.</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_dark_desc">Spotify classic deep charcoal</string>
+    <string name="theme_mode_amoled">AMOLED</string>
+    <string name="theme_mode_amoled_desc">Pure pitch black</string>
+
+    <!-- Player Controls -->
+    <string name="player_pause">Pause</string>
+
+    <!-- Artist Details -->
+    <string name="artist_subscribers">%1$s subscribers</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.blek.blexsy.PocketBaseIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-02T06:41:57.161Z" hostname="IDK" time="0.012">
+  <properties/>
+  <testcase name="setting token decodes userId from PocketBase JWT payload" classname="com.blek.blexsy.PocketBaseIntegrationTest" time="0.01"/>
+  <testcase name="spin threshold requires at least 20 seconds or 80 percent for short tracks" classname="com.blek.blexsy.PocketBaseIntegrationTest" time="0.0"/>
+  <testcase name="formatStatCount formats counts like Instagram" classname="com.blek.blexsy.PocketBaseIntegrationTest" time="0.0"/>
+  <testcase name="pbUrl defaults to https pb blek my id and trims trailing slashes" classname="com.blek.blexsy.PocketBaseIntegrationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

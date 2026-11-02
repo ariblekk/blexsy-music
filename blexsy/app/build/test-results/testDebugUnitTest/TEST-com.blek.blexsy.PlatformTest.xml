@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.blek.blexsy.PlatformTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-02T06:41:57.158Z" hostname="IDK" time="0.001">
+  <properties/>
+  <testcase name="greeting is built from the platform name" classname="com.blek.blexsy.PlatformTest" time="0.001"/>
+  <testcase name="platform name is reported" classname="com.blek.blexsy.PlatformTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

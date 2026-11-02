@@ -1,0 +1,8 @@
+com.blek.blexsy.app-pngs-0 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\build\generated\res\pngs\release
+com.blek.blexsy.app-updated_navigation_xml-1 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\build\generated\updated_navigation_xml\release
+com.blek.blexsy.app-packageReleaseResources-2 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir
+com.blek.blexsy.app-packageReleaseResources-3 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir
+com.blek.blexsy.app-release-4 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\build\intermediates\merged_res\release\mergeReleaseResources
+com.blek.blexsy.app-main-5 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\src\main\res
+com.blek.blexsy.app-release-6 C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app\src\release\res
+gradleHome-0 C:\Users\ariblekk\.gradle

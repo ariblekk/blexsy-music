@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.blek.blexsy.LibraryRepositoryTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-11-02T06:41:57.134Z" hostname="IDK" time="0.021">
+  <properties/>
+  <testcase name="likeIsPushedInBackgroundWhenOnline" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.005"/>
+  <testcase name="deletingSyncedPlaylistIsOptimisticAndHitsServer" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.002"/>
+  <testcase name="unlikeIsInstantToo" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="createPlaylistAppearsBeforeServerResponds" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="deletingUnsyncedPlaylistCancelsTheCreate" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="refreshPullsServerFavoritesWhenQueueIsEmpty" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="signOutClearsTheLocalMirror" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="pendingLikeIsNotRolledBackByServerPull" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="deletingPlaylistFromAStaleOptimisticScreenStillHitsServer" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="addTrackToPlaylistUpdatesLocallyAndSyncsToServer" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="syncedPlaylistSwapsLocalIdForServerId" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.0"/>
+  <testcase name="recordRecentShowsInstantlyAndStoresLocallyForGuest" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="guestRecentsAreFlushedToServerWhenAuthenticated" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.002"/>
+  <testcase name="offlinePlaylistSyncsOnNextRefresh" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <testcase name="likeShowsInstantlyAndStillQueuesWhenOffline" classname="com.blek.blexsy.LibraryRepositoryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

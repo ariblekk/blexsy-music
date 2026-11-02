@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Blexsy (Install & Launch)",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "cd blexsy && gradlew.bat installDebug && adb shell am start -n com.blek.blexsy/.MainActivity"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build Debug APK",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": ["/c", "cd blexsy && gradlew.bat assembleDebug"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Unit Tests",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": ["/c", "cd blexsy && gradlew.bat testDebugUnitTest"],
+      "problemMatcher": []
+    }
+  ]
+}

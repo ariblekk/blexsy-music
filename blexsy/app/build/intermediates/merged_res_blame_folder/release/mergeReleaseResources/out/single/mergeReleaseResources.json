@@ -1,0 +1,154 @@
+[
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_deezer_bold.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\deezer_bold.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-hdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-hdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxxhdpi_ic_launcher_background.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxxhdpi\\ic_launcher_background.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-hdpi_ic_launcher_background.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-hdpi\\ic_launcher_background.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\drawable-v24_ic_launcher_foreground.xml.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\drawable-v24\\ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_poppins_extrabold.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\poppins_extrabold.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-mdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_poppins_bold.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\poppins_bold.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\xml_locales_config.xml.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\xml\\locales_config.xml"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-mdpi_ic_launcher_background.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-mdpi\\ic_launcher_background.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xhdpi_ic_launcher_monochrome.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xhdpi\\ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\drawable_collapse.jpg.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\drawable\\collapse.jpg"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-hdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxxhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxhdpi_ic_launcher_background.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxhdpi\\ic_launcher_background.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxhdpi\\ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-hdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_deezer_extrabold.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\deezer_extrabold.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\drawable_ic_launcher_background.xml.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\drawable\\ic_launcher_background.xml"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxxhdpi\\ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xhdpi_ic_launcher_background.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xhdpi\\ic_launcher_background.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\drawable_lyrics_empty.gif.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\drawable\\lyrics_empty.gif"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-hdpi_ic_launcher_monochrome.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-hdpi\\ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_poppins_semibold.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\poppins_semibold.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-mdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-mdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-mdpi_ic_launcher_monochrome.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-mdpi\\ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-mdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_poppins_regular.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\poppins_regular.ttf"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxxhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\mipmap-xxxhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-release-50:\\font_poppins_medium.ttf.flat",
+        "source": "C:\\Users\\ariblekk\\.gradle\\daemon\\9.8.2\\com.blek.blexsy.app-main-51:\\font\\poppins_medium.ttf"
+    }
+]

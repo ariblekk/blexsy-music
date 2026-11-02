@@ -1,0 +1,20 @@
+<lint-module
+    format="1"
+    dir="C:\Users\ariblekk\Documents\GitHub\blexsy-music\blexsy\app"
+    name=":app"
+    type="APP"
+    maven="blexsy:app:unspecified"
+    agpVersion="9.5.0"
+    buildFolder="build"
+    bootClassPath="C:\Users\ariblekk\AppData\Local\Android\Sdk\platforms\android-37.0\android.jar;C:\Users\ariblekk\AppData\Local\Android\Sdk\build-tools\36.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-37.0"
+    neverShrinking="true"
+    highlightGradualR8Api="false">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

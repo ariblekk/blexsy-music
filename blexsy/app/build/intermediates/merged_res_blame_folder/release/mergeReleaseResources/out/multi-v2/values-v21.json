@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.blek.blexsy.app-mergeReleaseResources-48:/values-v21/values-v21.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\ariblekk\\.gradle\\caches\\9.8.2\\transforms\\bcaaa9db569b272b23ed554d5a0eea6d\\transformed\\media-1.7.0\\res\\values-v21\\values-v21.xml",
+                    "from": {
+                        "startLines": "2,5,8,11",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,223,386,554",
+                        "endLines": "4,7,10,13",
+                        "endColumns": "12,12,12,12",
+                        "endOffsets": "218,381,549,716"
+                    }
+                }
+            ]
+        }
+    ]
+}

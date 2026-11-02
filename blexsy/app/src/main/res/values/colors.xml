@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches BlexsyColors.Background so no light window background can ever
+         show through rounded corners or while a screen is pushed aside. -->
+    <color name="blexsy_window_background">#FF121212</color>
+</resources>
