@@ -283,14 +283,16 @@ class BlexsyApiClient(
     }
 
     suspend fun search(query: String, offset: Int = 0, limit: Int = 10): SearchResult = coroutineScope {
+        val spTracksDeferred = async { runCatching { SpotipyFreeService.searchTracks(query, limit = limit) }.getOrNull() }
         val dzTracksDeferred = async { runCatching { DeezerService.searchTracks(query, limit = limit) }.getOrNull() }
         val ytTracksDeferred = async { runCatching { InnerTubeService.searchTracks(query, limit = limit) }.getOrNull() }
         val dzArtistsDeferred = async { runCatching { DeezerService.searchArtists(query, limit = 3) }.getOrNull() }
         val ytArtistsDeferred = async { runCatching { InnerTubeService.searchArtists(query, limit = 3) }.getOrNull() }
 
+        val spTracks = spTracksDeferred.await().orEmpty()
         val dzTracks = dzTracksDeferred.await().orEmpty()
         val ytTracks = ytTracksDeferred.await().orEmpty()
-        val tracks = if (dzTracks.isNotEmpty()) dzTracks else ytTracks
+        val tracks = if (spTracks.isNotEmpty()) spTracks else if (dzTracks.isNotEmpty()) dzTracks else ytTracks
 
         val dzArtists = dzArtistsDeferred.await().orEmpty()
         val ytArtists = ytArtistsDeferred.await().orEmpty()
@@ -364,6 +366,8 @@ class BlexsyApiClient(
             val dzAlbum = runCatching { DeezerService.getAlbumDetail(id) }.getOrNull()
             if (dzAlbum != null) return dzAlbum
         }
+        val spAlbum = runCatching { SpotipyFreeService.getAlbum(id) }.getOrNull()
+        if (spAlbum != null) return spAlbum
         val ytAlbum = runCatching { InnerTubeService.getAlbumDetail(id) }.getOrNull()
         if (ytAlbum != null) return ytAlbum
         val dzAlbum = runCatching { DeezerService.getAlbumDetail(id) }.getOrNull()
@@ -473,6 +477,8 @@ class BlexsyApiClient(
     }
 
     suspend fun spotifyPlaylistDetail(id: String, fetchAll: Boolean = true): Pair<String, List<Track>> {
+        val spTracks = runCatching { SpotipyFreeService.getPlaylistTracks(id) }.getOrNull()?.takeIf { it.isNotEmpty() }
+        if (spTracks != null) return "Playlist" to spTracks
         val ytRes = runCatching { InnerTubeService.getPlaylistTracks(id) }.getOrNull()?.takeIf { it.second.isNotEmpty() }
         if (ytRes != null) return ytRes
         val scraped = runCatching { scrapeSpotifyEmbed(id, if (fetchAll) 100 else 50) }.getOrNull().orEmpty()

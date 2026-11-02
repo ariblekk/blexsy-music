@@ -1,0 +1,7 @@
+services:
+  spotipyfree:
+    build: .
+    container_name: spotipyfree
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
