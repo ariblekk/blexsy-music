@@ -73,14 +73,14 @@
 
     <!-- Home Screen & Dialogs -->
     <string name="action_cook_crate">Buat playlist</string>
-    <string name="action_port_spotify">Impor playlist Spotify</string>
+    <string name="action_port_spotify">Impor playlist YouTube Music</string>
     <string name="dialog_create_crate_title">Buat Playlist Baru</string>
     <string name="dialog_create_crate_placeholder">Beri nama playlist yang keren</string>
     <string name="dialog_create_crate_confirm">Buat</string>
     <string name="dialog_create_crate_dismiss">Batal</string>
-    <string name="dialog_port_crate_title">Impor Playlist Spotify</string>
-    <string name="dialog_port_crate_desc">Masukkan tautan atau ID playlist Spotify di sini.</string>
-    <string name="dialog_port_crate_placeholder">https://open.spotify.com/playlist/...</string>
+    <string name="dialog_port_crate_title">Impor Playlist YouTube Music</string>
+    <string name="dialog_port_crate_desc">Masukkan tautan atau ID playlist YouTube Music di sini.</string>
+    <string name="dialog_port_crate_placeholder">https://music.youtube.com/playlist?list=...</string>
     <string name="dialog_port_crate_confirm">Impor</string>
     <string name="dialog_port_crate_cancel">Batal</string>
     <string name="dialog_port_crate_invalid">Masukkan tautan atau ID playlist yang valid.</string>
@@ -99,8 +99,14 @@
     <string name="search_recent_digs">Pencarian terakhir</string>
     <string name="search_clear_history">Hapus</string>
     <string name="search_zero_hits">Tidak ada hasil untuk “%1$s”. Salah ketik atau terlalu underground?</string>
+    <string name="search_failed">Gagal menghubungi server pencarian.</string>
+    <string name="search_failed_retry">Coba lagi</string>
+    <string name="search_more_failed">Gagal memuat hasil lainnya.</string>
+    <string name="search_no_more">Itu semua hasilnya.</string>
     <string name="search_artist">Artis</string>
     <string name="search_artists">Artis</string>
+    <string name="search_albums">Album</string>
+    <string name="search_playlists">Playlist</string>
     <string name="search_tracks">Lagu</string>
 
     <!-- Listen Now Tab -->
@@ -118,6 +124,16 @@
     <string name="listen_action_see_all">LIHAT SEMUA</string>
     <string name="listen_action_show_all">TAMPILKAN SEMUA</string>
     <string name="listen_action_run_it_back">PUTAR ULANG</string>
+    <string name="listen_popular_artists_kicker">JELAJAHI</string>
+    <string name="listen_popular_artists_title">Artis Populer</string>
+    <string name="listen_favorite_artists_kicker">SELERA KAMU</string>
+    <string name="listen_favorite_artists_title">Artis Favorit</string>
+    <string name="listen_playlist_collection_kicker">KOLEKSI</string>
+    <string name="listen_playlist_collection_title">Daftar Playlist Koleksi</string>
+    <string name="featured_action_listen_now">Dengarkan</string>
+    <string name="featured_action_open">Buka</string>
+    <string name="featured_action_open_album">Buka album</string>
+    <string name="featured_action_open_playlist">Buka playlist</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">PENGATURAN</string>

@@ -143,15 +143,19 @@ internal fun ImportSpotifyDialog(
     )
 }
 
-/** Accepts a full open.spotify.com URL, a spotify: URI, or a bare playlist ID. */
+/** Accepts a YouTube Music / YouTube playlist URL or a bare playlist ID. */
 internal fun spotifyPlaylistId(raw: String): String {
     val trimmed = raw.trim()
-    return when {
-        "open.spotify.com/playlist/" in trimmed ->
-            trimmed.substringAfter("open.spotify.com/playlist/").substringBefore("?").substringBefore("/")
-        trimmed.startsWith("spotify:playlist:") -> trimmed.removePrefix("spotify:playlist:")
-        else -> trimmed
-    }.trim()
+    val fromListParam = Regex("""[?&]list=([A-Za-z0-9_-]+)""").find(trimmed)
+        ?.groupValues?.getOrNull(1)
+    if (!fromListParam.isNullOrBlank()) return fromListParam
+    if ("youtube.com/playlist" in trimmed || "music.youtube.com/playlist" in trimmed) {
+        return trimmed.substringAfter("/playlist", "")
+            .substringAfter("/", "")
+            .substringBefore("?")
+            .substringBefore("&")
+    }
+    return trimmed
 }
 
 @Composable

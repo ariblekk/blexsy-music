@@ -205,9 +205,8 @@ fun AlbumDetailScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.clickable {
-                                        val firstTrack = a.tracks.firstOrNull()
-                                        val artistId = firstTrack?.primaryArtistRef ?: a.artist.takeIf { it.isNotBlank() }
-                                        if (artistId != null) onOpenArtist(artistId)
+                                        // Only real YouTube Music channel ids can open an artist page.
+                                        a.tracks.firstOrNull()?.primaryArtistRef?.let(onOpenArtist)
                                     }
                                 )
                                 Text(

@@ -73,14 +73,14 @@
 
     <!-- Home Screen & Dialogs -->
     <string name="action_cook_crate">Cook up a crate</string>
-    <string name="action_port_spotify">Port Spotify crate</string>
+    <string name="action_port_spotify">Import YouTube Music playlist</string>
     <string name="dialog_create_crate_title">Cook Up a Crate</string>
     <string name="dialog_create_crate_placeholder">Give it a fire name</string>
     <string name="dialog_create_crate_confirm">Cook it</string>
     <string name="dialog_create_crate_dismiss">Nah</string>
-    <string name="dialog_port_crate_title">Port Spotify Crate</string>
-    <string name="dialog_port_crate_desc">Drop that Spotify crate link or ID right here.</string>
-    <string name="dialog_port_crate_placeholder">https://open.spotify.com/playlist/...</string>
+    <string name="dialog_port_crate_title">Import YouTube Music Playlist</string>
+    <string name="dialog_port_crate_desc">Paste a YouTube Music or YouTube playlist link or ID.</string>
+    <string name="dialog_port_crate_placeholder">https://music.youtube.com/playlist?list=...</string>
     <string name="dialog_port_crate_confirm">Port it</string>
     <string name="dialog_port_crate_cancel">Cancel</string>
     <string name="dialog_port_crate_invalid">Enter a valid playlist link or ID.</string>
@@ -99,8 +99,14 @@
     <string name="search_recent_digs">Recent digs</string>
     <string name="search_clear_history">Clear \'em</string>
     <string name="search_zero_hits">Zero hits for \u201C%1$s\u201D. Typo or too underground?</string>
+    <string name="search_failed">Couldn\'t reach the search server.</string>
+    <string name="search_failed_retry">Try again</string>
+    <string name="search_more_failed">Couldn\'t load more results.</string>
+    <string name="search_no_more">That\'s everything.</string>
     <string name="search_artist">Artist</string>
     <string name="search_artists">Artists</string>
+    <string name="search_albums">Albums</string>
+    <string name="search_playlists">Playlists</string>
     <string name="search_tracks">Tracks</string>
 
     <!-- Listen Now Tab -->
@@ -118,6 +124,16 @@
     <string name="listen_action_see_all">SEE ALL</string>
     <string name="listen_action_show_all">SHOW ALL</string>
     <string name="listen_action_run_it_back">RUN IT BACK</string>
+    <string name="listen_popular_artists_kicker">DISCOVER</string>
+    <string name="listen_popular_artists_title">Popular Artists</string>
+    <string name="listen_favorite_artists_kicker">YOUR TASTE</string>
+    <string name="listen_favorite_artists_title">Favorite Artists</string>
+    <string name="listen_playlist_collection_kicker">COLLECTION</string>
+    <string name="listen_playlist_collection_title">Playlist Collection</string>
+    <string name="featured_action_listen_now">Listen now</string>
+    <string name="featured_action_open">Open</string>
+    <string name="featured_action_open_album">Open album</string>
+    <string name="featured_action_open_playlist">Open playlist</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">SETTINGS</string>

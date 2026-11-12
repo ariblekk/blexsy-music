@@ -60,6 +60,11 @@ class ApiCache(context: Context, dirName: String = "blexsy-api-cache") {
         Unit
     }
 
+    suspend fun evict(key: String) = withContext(Dispatchers.IO) {
+        runCatching { fileFor(key).delete() }
+        Unit
+    }
+
     suspend fun clear() = withContext(Dispatchers.IO) {
         dir.listFiles()?.forEach { it.delete() }
         Unit

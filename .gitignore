@@ -19,9 +19,52 @@
 *.tar.gz
 *.rar
 
+# ...but the Gradle wrapper jar bootstraps ./gradlew, so it must be committed.
+# Leading **/ matters: a pattern containing a slash is anchored to this file's directory.
+!**/gradle/wrapper/gradle-wrapper.jar
+
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
 
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
+
+# =========================================================================================
+# Gradle / Android build output
+# =========================================================================================
+
+# Gradle's own caches and daemon state, written inside the project during builds.
+.gradle/
+
+# Every module's compiled output: classes, dex, merged resources, APKs, lint reports, test results.
+build/
+
+# Android tooling and local machine config.
+local.properties
+captures/
+.cxx/
+release.jks
+
+# =========================================================================================
+# IDE
+# =========================================================================================
+
+# The shared .idea/*.xml files are kept on purpose; these are machine- or session-specific
+# and only ever churn the diff.
+.idea/caches/
+.idea/workspace.xml
+.idea/httpRequests/
+
+# =========================================================================================
+# Environment files
+.env
+.env.*
+
+# Python (spotipyfree proxy)
+# =========================================================================================
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/

@@ -5,15 +5,17 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -50,26 +52,34 @@ internal fun PlayerCoverView(
         )
 
         val displayCover = track.image
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
+            // Short square: never wider than the panel and never taller than 80% of the free
+            // height, so the cover stops dominating its column on tall screens.
+            val coverSize = minOf(maxWidth * 0.9f, maxHeight * 0.8f)
             with(sharedScope) {
-                CoverImage(
-                    url = displayCover,
-                    size = 0,
-                    shapeRadius = 12,
+                Box(
                     modifier = Modifier
                         .sharedElement(
                             sharedContentState = rememberSharedContentState(key = "player_cover_art_${track.id}"),
                             animatedVisibilityScope = animatedVisibilityScope
                         )
-                        .fillMaxWidth(0.92f)
-                        .aspectRatio(1f)
+                        .size(coverSize)
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable(onClick = onCoverClick)
-                )
+                ) {
+                    // The video (when present) is the panel backdrop, so the square stays artwork.
+                    CoverImage(
+                        url = displayCover,
+                        size = 0,
+                        shapeRadius = 12,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 

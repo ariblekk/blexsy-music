@@ -8,8 +8,10 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,7 +20,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.ui.res.stringResource
+import com.blek.blexsy.R
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -31,7 +37,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,11 +44,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,6 +59,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import coil3.compose.AsyncImage
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
 import com.blek.blexsy.model.LyricsResult
@@ -156,6 +163,7 @@ fun FullPlayerModal(
         showQueue -> FullPlayerView.QUEUE
         else -> FullPlayerView.COVER
     }
+
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var lyricsResult by remember(track.id) { mutableStateOf<LyricsResult?>(null) }
     var isLoadingLyrics by remember(track.id) { mutableStateOf(api != null) }
@@ -165,7 +173,10 @@ fun FullPlayerModal(
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
-    val artists = track.artistRefs
+    // Only real YouTube Music channel ids can open an artist page; a bare name cannot.
+    val artists = track.artistRefs.filter {
+        it.first.startsWith("UC") || it.first.startsWith("FEmusic_artist")
+    }
     var creditsData by remember(track.id) { mutableStateOf<TrackCredits?>(null) }
     var isLoadingCredits by remember(track.id) { mutableStateOf(false) }
 
@@ -267,12 +278,20 @@ fun FullPlayerModal(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
-    val hideSheet: () -> Unit = {
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-    }
 
     val density = LocalDensity.current
     val dismissThresholdPx = with(density) { 140.dp.toPx() }
+
+    // Predictive-back drag: the panel slides down while the gesture is in progress, then
+    // eases back to 0 so the sheet's own hide animation is the only downward motion left.
+    val predictiveOffsetPx = remember { Animatable(0f) }
+    val predictiveSlideDistancePx = with(density) { 420.dp.toPx() }
+
+    val hideSheet: () -> Unit = {
+        scope.launch { predictiveOffsetPx.animateTo(0f, tween(180)) }
+        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+    }
+
     val dismissConnection = remember(sheetState, dismissThresholdPx, showLyrics, showQueue) {
         object : NestedScrollConnection {
             override suspend fun onPreFling(available: Velocity): Velocity {
@@ -299,8 +318,6 @@ fun FullPlayerModal(
             }
         }
     }
-
-    var predictiveOffsetY by remember { mutableFloatStateOf(0f) }
 
     val handleBack: () -> Unit = {
         if (showLyrics) {
@@ -339,7 +356,7 @@ fun FullPlayerModal(
         scrimColor = Color.Black.copy(alpha = 0.72f),
         shape = RectangleShape,
         dragHandle = null,
-        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = true)
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
         PredictiveBackHandler(enabled = true) { progress ->
             if (showLyrics) {
@@ -355,11 +372,12 @@ fun FullPlayerModal(
             } else {
                 try {
                     progress.collect { backEvent ->
-                        predictiveOffsetY = backEvent.progress * 420f
+                        predictiveOffsetPx.snapTo(backEvent.progress * predictiveSlideDistancePx)
                     }
                     hideSheet()
                 } catch (_: CancellationException) {
-                    predictiveOffsetY = 0f
+                    // Gesture cancelled: settle the panel back into place instead of snapping.
+                    predictiveOffsetPx.animateTo(0f, tween(180))
                 }
             }
         }
@@ -397,32 +415,44 @@ fun FullPlayerModal(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .graphicsLayer { translationY = predictiveOffsetY }
+                .graphicsLayer { translationY = predictiveOffsetPx.value }
                 .nestedScroll(dismissConnection)
         ) {
-            // Ambient glow layer
+            // 1. Backdrop: the track's own artwork, blurred and darkened. Nothing else is fetched —
+            //    no canvas video resolve, no network round-trip while the player opens. Alpha stays
+            //    low so it reads as texture behind the title instead of a picture.
+            //    The flat fill underneath is not decoration: the sheet's containerColor is
+            //    Color.Transparent, so without it the home screen would show through.
+            // ponytail: Modifier.blur needs API 31+; older devices just get the darkened artwork.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BlexsyColors.Background)
+            )
+            val backdropUrl = track.highResImage ?: track.image
+            if (!backdropUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = backdropUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            // Overscale so the blurred edges never show as a vignette.
+                            scaleX = 1.15f
+                            scaleY = 1.15f
+                            alpha = 0.5f
+                        }
+                        .blur(radius = 48.dp)
+                )
+            }
+
+            // 2. Grain: same noise as the navbar / mini player, so the blurred artwork never
+            //    reads as a flat gradient. One layer only, otherwise it looks dirty.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .drawBehind {
-                        // Radial gradient from dominant album color - Apple Music style
-                        drawRect(color = BlexsyColors.Background)
-                        // ponytail: 8-stop smoothstep radial blend with identical hue fading; avoids sRGB black-shift banding.
-                        drawRect(
-                            brush = Brush.radialGradient(
-                                0.00f to dominantColor.copy(alpha = 0.55f),
-                                0.18f to dominantColor.copy(alpha = 0.46f),
-                                0.35f to dominantColor.copy(alpha = 0.35f),
-                                0.52f to dominantColor.copy(alpha = 0.24f),
-                                0.68f to dominantColor.copy(alpha = 0.14f),
-                                0.82f to dominantColor.copy(alpha = 0.06f),
-                                0.92f to dominantColor.copy(alpha = 0.02f),
-                                1.00f to dominantColor.copy(alpha = 0.00f),
-                                center = Offset(size.width * 0.5f, size.height * 0.25f),
-                                radius = size.width * 1.35f
-                            )
-                        )
-                        // Dither grain: breaks up 8-bit quantization banding lines
                         drawRect(brush = FrostGrainBrush, alpha = FrostGrainAlpha)
                     }
             )
@@ -436,10 +466,14 @@ fun FullPlayerModal(
                     .padding(bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                SharedTransitionLayout(
+                Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                ) {
+                SharedTransitionLayout(
+                    modifier = Modifier
+                        .fillMaxSize()
                 ) {
                     AnimatedContent(
                         targetState = currentView,
@@ -504,6 +538,7 @@ fun FullPlayerModal(
                         }
                     }
                 }
+                }
 
                 PlayerControls(
                     player = player,
@@ -556,13 +591,22 @@ fun FullPlayerModal(
                         showAddToPlaylistSheet = true
                     }
                 } else null,
-                onViewArtist = if (onOpenArtist != null && artists.isNotEmpty()) {
+                // Tracks from home carousels often arrive without a channel id, which used to hide
+                // this row completely. Keep it and resolve the artist by name on tap instead.
+                onViewArtist = if (onOpenArtist != null && track.artist.isNotBlank()) {
                     {
                         showMoreSheet = false
-                        if (artists.size > 1) {
-                            showSelectArtistSheet = true
-                        } else {
-                            navigateToArtist(artists.first().first)
+                        val knownId = artists.firstOrNull()?.first
+                        when {
+                            artists.size > 1 -> showSelectArtistSheet = true
+                            knownId != null -> navigateToArtist(knownId)
+                            else -> scope.launch {
+                                val resolved = runCatching {
+                                    api?.searchArtists(track.artist.substringBefore(",").trim())
+                                        ?.firstOrNull()?.channelId
+                                }.getOrNull()
+                                if (resolved != null) navigateToArtist(resolved)
+                            }
                         }
                     }
                 } else null,

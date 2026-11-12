@@ -3,6 +3,7 @@ package com.blek.blexsy.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,6 +40,7 @@ fun PlaylistDetailScreen(
     imageUrl: String?,
     description: String? = null,
     tracks: List<Track>,
+    isLoading: Boolean = false,
     player: BlexsyAudioPlayer,
     onBack: () -> Unit,
     onDeletePlaylist: (() -> Unit)? = null,
@@ -176,14 +178,18 @@ fun PlaylistDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                         }
-                        Text(
-                            text = stringResource(R.string.playlist_tracks_bangers, tracks.size),
-                            style = BlexsyTypography.Caption.copy(
-                                color = Color.White.copy(alpha = 0.8f)
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                        if (tracks.isNotEmpty()) {
+                        if (isLoading) {
+                            SkeletonLine(modifier = Modifier.width(96.dp), height = 12.dp)
+                        } else {
+                            Text(
+                                text = stringResource(R.string.playlist_tracks_bangers, tracks.size),
+                                style = BlexsyTypography.Caption.copy(
+                                    color = Color.White.copy(alpha = 0.8f)
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        if (!isLoading && tracks.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(18.dp))
                             BlexsyButton(
                                 text = stringResource(if (isPlaylistPlaying) R.string.player_pause else R.string.player_play),
@@ -206,14 +212,20 @@ fun PlaylistDetailScreen(
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            itemsIndexed(tracks) { index, track ->
-                TrackTile(
-                    track = track,
-                    index = index,
-                    isPlayingThis = activeTrack?.id == track.id,
-                    onClick = { player.play(track, tracks, title) },
-                    onMore = { onTrackOptions(track, tracks) }
-                )
+            if (isLoading) {
+                // Placeholder rows while a remote playlist is being fetched: keeps the hero
+                // (title + cover are already known) and avoids flashing a single "Unknown track".
+                items(8) { SkeletonTrackRow() }
+            } else {
+                itemsIndexed(tracks) { index, track ->
+                    TrackTile(
+                        track = track,
+                        index = index,
+                        isPlayingThis = activeTrack?.id == track.id,
+                        onClick = { player.play(track, tracks, title) },
+                        onMore = { onTrackOptions(track, tracks) }
+                    )
+                }
             }
         }
 

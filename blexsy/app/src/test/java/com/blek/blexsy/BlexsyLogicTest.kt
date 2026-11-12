@@ -50,7 +50,10 @@ class BlexsyLogicTest {
         }.format(java.util.Date())
         assertEquals("Today", formatHistoryDate(nowIso))
 
-        val yesterdayDate = java.util.Date(System.currentTimeMillis() - 26 * 3600 * 1000L)
+        val yesterdayCal = java.util.Calendar.getInstance().apply {
+            add(java.util.Calendar.DAY_OF_YEAR, -1)
+        }
+        val yesterdayDate = yesterdayCal.time
         val yesterdayIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }.format(yesterdayDate)
@@ -62,25 +65,6 @@ class BlexsyLogicTest {
 
     @Test
     fun testToHighResArtwork() {
-        val standardCover = "https://i.scdn.co/image/ab67616d00001e02172768978c7f929803ad7e8b"
-        val highRes = standardCover.toHighResArtwork()
-        assertEquals("https://i.scdn.co/image/ab67616d0000b273172768978c7f929803ad7e8b", highRes)
-
-        val smallCover = "https://i.scdn.co/image/ab67616d00004851172768978c7f929803ad7e8b"
-        assertEquals("https://i.scdn.co/image/ab67616d0000b273172768978c7f929803ad7e8b", smallCover.toHighResArtwork())
-
-        val artistMedium = "https://i.scdn.co/image/ab676161000051745aa62c329f3d95b7f7a142c3"
-        assertEquals("https://i.scdn.co/image/ab6761610000e5eb5aa62c329f3d95b7f7a142c3", artistMedium.toHighResArtwork())
-
-        val deezerCover250 = "https://cdn-images.dzcdn.net/images/cover/4439a6a45c49b488e0e9258436f5073a/250x250-000000-80-0-0.jpg"
-        assertEquals("https://cdn-images.dzcdn.net/images/cover/4439a6a45c49b488e0e9258436f5073a/1000x1000-000000-80-0-0.jpg", deezerCover250.toHighResArtwork())
-
-        val deezerCover500 = "https://cdn-images.dzcdn.net/images/cover/4439a6a45c49b488e0e9258436f5073a/500x500-000000-80-0-0.jpg"
-        assertEquals("https://cdn-images.dzcdn.net/images/cover/4439a6a45c49b488e0e9258436f5073a/1000x1000-000000-80-0-0.jpg", deezerCover500.toHighResArtwork())
-
-        val deezerArtist = "https://cdn-images.dzcdn.net/images/artist/879015e713cc6ad6ffaeec154c027505/56x56-000000-80-0-0.jpg"
-        assertEquals("https://cdn-images.dzcdn.net/images/artist/879015e713cc6ad6ffaeec154c027505/1000x1000-000000-80-0-0.jpg", deezerArtist.toHighResArtwork())
-
         val ytCover = "https://lh3.googleusercontent.com/abc=w544-h544-l90-rj"
         assertEquals("https://lh3.googleusercontent.com/abc=w1024-h1024-l90-rj", ytCover.toHighResArtwork())
 
@@ -124,12 +108,12 @@ class BlexsyLogicTest {
             id = "1",
             title = "Duet",
             artist = "Singer One, Singer Two",
-            artistIds = listOf("id1", "id2")
+            artistIds = listOf("UCid1", "UCid2")
         )
         val refs = track.artistRefs
         assertEquals(2, refs.size)
-        assertEquals("id1" to "Singer One", refs[0])
-        assertEquals("id2" to "Singer Two", refs[1])
+        assertEquals("UCid1" to "Singer One", refs[0])
+        assertEquals("UCid2" to "Singer Two", refs[1])
     }
 
     @Test
@@ -139,12 +123,10 @@ class BlexsyLogicTest {
             title = "Hits",
             artist = "Star",
             rank = 1,
-            rankStatus = "UP",
-            rankChange = 2
+            rankStatus = "UP"
         )
         assertEquals(1, track.rank)
         assertEquals("UP", track.rankStatus)
-        assertEquals(2, track.rankChange)
 
         fun formatMovement(status: String?, change: Int?): String = when (status?.lowercase()) {
             "up" -> if (change != null && change > 0) "▲ $change" else "▲"
@@ -835,7 +817,8 @@ class BlexsyLogicTest {
         assertEquals("UC123", withBrowseId.primaryArtistRef)
 
         val withoutBrowseId = Track(id = "2", title = "Song", artist = "Bernadya")
-        assertEquals("Bernadya", withoutBrowseId.primaryArtistRef)
+        // A name is not an id: the artist page must not be offered without a channel id.
+        assertNull(withoutBrowseId.primaryArtistRef)
 
         val unknown = Track(id = "3", title = "Song", artist = "Unknown artist")
         assertNull(unknown.primaryArtistRef)
@@ -851,49 +834,6 @@ class BlexsyLogicTest {
     }
 
     @Test
-    fun testFilterDisplayedArtistsOnlyShowsWhenTypingArtist() {
-        val coldplayArtist = com.blek.blexsy.model.ArtistSummary(id = "1", name = "Coldplay")
-        val yellowcardArtist = com.blek.blexsy.model.ArtistSummary(id = "2", name = "Yellowcard")
-        val trackYellow = Track(id = "t1", title = "Yellow", artist = "Coldplay")
-
-        // 1. Searching for song "Yellow": should not show Yellowcard artist
-        val yellowResults = com.blek.blexsy.ui.filterDisplayedArtists(
-            query = "Yellow",
-            artists = listOf(yellowcardArtist),
-            tracks = listOf(trackYellow)
-        )
-        assertTrue(yellowResults.isEmpty())
-
-        // 2. Searching for artist "Coldplay": should show Coldplay artist
-        val coldplayResults = com.blek.blexsy.ui.filterDisplayedArtists(
-            query = "Coldplay",
-            artists = listOf(coldplayArtist),
-            tracks = listOf(trackYellow)
-        )
-        assertEquals(1, coldplayResults.size)
-        assertEquals("Coldplay", coldplayResults.first().name)
-
-        // 3. Typing partial artist name "cold": should show Coldplay
-        val partialResults = com.blek.blexsy.ui.filterDisplayedArtists(
-            query = "cold",
-            artists = listOf(coldplayArtist),
-            tracks = listOf(trackYellow)
-        )
-        assertEquals(1, partialResults.size)
-        assertEquals("Coldplay", partialResults.first().name)
-
-        // 4. Searching for song "Die With A Smile": should not show irrelevant artists
-        val randomArtist = com.blek.blexsy.model.ArtistSummary(id = "3", name = "Die With A Smile Fans")
-        val trackDie = Track(id = "t2", title = "Die With A Smile", artist = "Lady Gaga, Bruno Mars")
-        val songResults = com.blek.blexsy.ui.filterDisplayedArtists(
-            query = "Die With A Smile",
-            artists = listOf(randomArtist),
-            tracks = listOf(trackDie)
-        )
-        assertTrue(songResults.isEmpty())
-    }
-
-    @Test
     fun testArtistFollowerTextFormatting() {
         val detail = com.blek.blexsy.model.ArtistDetail(
             id = "UC123",
@@ -901,20 +841,6 @@ class BlexsyLogicTest {
             subscribers = "25M subscribers"
         )
         assertEquals("25M subscribers", detail.subscribers)
-
-        assertEquals("15,4 jt subscriber", com.blek.blexsy.ui.resolveSubscriberCount("15,4 jt subscriber", null, null))
-        assertEquals("25M subscribers", com.blek.blexsy.ui.resolveSubscriberCount("25M subscribers", null, null))
-        assertEquals("2.5M subscribers", com.blek.blexsy.ui.resolveSubscriberCount(null, 2_500_000, null))
-        assertEquals("350.0K subscribers", com.blek.blexsy.ui.resolveSubscriberCount(null, null, 350_000))
-        assertNull(com.blek.blexsy.ui.resolveSubscriberCount(null, null, null))
-    }
-
-    @Test
-    fun testArtistCanvasServiceBlankReturnsNull() = kotlinx.coroutines.runBlocking {
-        val resultBlank = com.blek.blexsy.data.ArtistCanvasService.getMotionVideoUrl("")
-        assertNull(resultBlank)
-        val resultSpaces = com.blek.blexsy.data.ArtistCanvasService.getMotionVideoUrl("   ")
-        assertNull(resultSpaces)
     }
 
     @Test
@@ -1117,67 +1043,91 @@ class BlexsyLogicTest {
     }
 
     @Test
-    fun testResolveHeroTracksEvenDistributionAndNoRecents() {
-        val active = Track(id = "np", title = "Now Playing")
+    fun testResolveHeroTracksFavoritesThenChartFallback() {
         val favorites = (1..6).map { Track(id = "fav-$it", title = "Fav $it") }
-        val artistTracks = (1..6).map { Track(id = "art-$it", title = "Art $it") }
         val chartTracks = (1..10).map { Track(id = "chart-$it", title = "Chart $it") }
 
         val resolved = com.blek.blexsy.ui.resolveHeroTracks(
-            activeTrack = active,
             favorites = favorites,
-            favoriteArtistTracks = artistTracks,
             chartTracks = chartTracks,
             limit = 10
         )
 
         assertEquals(10, resolved.size)
-        // Active track is first
-        assertEquals("np", resolved[0].id)
-        // Favorites and artist tracks alternate 1:1 (fair share, no domination)
-        assertEquals("fav-1", resolved[1].id)
-        assertEquals("art-1", resolved[2].id)
-        assertEquals("fav-2", resolved[3].id)
-        assertEquals("art-2", resolved[4].id)
-        // Fallback fill when few items available
+        // Favourites first, in library order, then the chart as filler.
+        assertEquals("fav-1", resolved[0].id)
+        assertEquals("fav-6", resolved[5].id)
+        assertEquals("chart-1", resolved[6].id)
+
         val sparse = com.blek.blexsy.ui.resolveHeroTracks(
-            activeTrack = null,
             favorites = listOf(Track(id = "fav-1")),
-            favoriteArtistTracks = listOf(Track(id = "art-1")),
             chartTracks = chartTracks,
             limit = 5
         )
-        assertEquals(listOf("fav-1", "art-1", "chart-1", "chart-2", "chart-3"), sparse.map { it.id })
+        assertEquals(listOf("fav-1", "chart-1", "chart-2", "chart-3", "chart-4"), sparse.map { it.id })
+
+        // No favourites at all: the chart alone still fills the hero.
+        val chartOnly = com.blek.blexsy.ui.resolveHeroTracks(
+            favorites = emptyList(),
+            chartTracks = chartTracks,
+            limit = 3
+        )
+        assertEquals(listOf("chart-1", "chart-2", "chart-3"), chartOnly.map { it.id })
+    }
+
+    @Test
+    fun testResolveHeroTracksIsStableWhilePlaying() {
+        val favorites = (1..4).map { Track(id = "fav-$it", title = "Fav $it") }
+
+        // Whatever is currently playing must not re-rank the carousel: the resolved order has to
+        // stay identical across track changes, otherwise the pager swaps slides mid-song.
+        val first = com.blek.blexsy.ui.resolveHeroTracks(
+            favorites = favorites,
+            chartTracks = emptyList(),
+            limit = 8
+        )
+        val second = com.blek.blexsy.ui.resolveHeroTracks(
+            favorites = favorites,
+            chartTracks = emptyList(),
+            limit = 8
+        )
+        assertEquals(first.map { it.id }, second.map { it.id })
+        assertEquals(listOf("fav-1", "fav-2", "fav-3", "fav-4"), first.map { it.id })
     }
 
     @Test
     fun testResolveHeroTracksWeightedScoringBoostsFrequentPlays() {
         val fav1 = Track(id = "fav-1", title = "Fav 1")
         val fav2 = Track(id = "fav-2", title = "Fav 2")
-        val art1 = Track(id = "art-1", title = "Art 1")
-        val art2 = Track(id = "art-2", title = "Art 2")
+        val chart1 = Track(id = "chart-1", title = "Chart 1")
 
         val resolved = com.blek.blexsy.ui.resolveHeroTracks(
-            activeTrack = null,
             favorites = listOf(fav1, fav2),
-            favoriteArtistTracks = listOf(art1, art2),
-            chartTracks = emptyList(),
+            chartTracks = listOf(chart1),
             playCounts = mapOf("fav-2" to 10),
-            recentTracks = listOf(art1),
-            limit = 4
+            recentTracks = listOf(fav1),
+            limit = 3
         )
-        assertEquals(listOf("fav-2", "art-2", "fav-1", "art-1"), resolved.map { it.id })
+        // fav-2 wins on play count; fav-1 is dumped by the recency penalty but stays above chart.
+        assertEquals(listOf("fav-2", "fav-1", "chart-1"), resolved.map { it.id })
     }
 
     @Test
     fun testTrackMultiArtistResolution() {
-        val singleArtistTrack = Track(artist = "Prince", artistIds = listOf("prince-id"))
-        assertEquals(listOf("prince-id" to "Prince"), singleArtistTrack.artistRefs)
+        val singleArtistTrack = Track(artist = "Prince", artistIds = listOf("UCprince"))
+        assertEquals(listOf("UCprince" to "Prince"), singleArtistTrack.artistRefs)
 
-        val multiArtistWithIds = Track(artist = "Prince, Sheila E.", artistIds = listOf("prince-id", "sheila-id"))
-        assertEquals(listOf("prince-id" to "Prince", "sheila-id" to "Sheila E."), multiArtistWithIds.artistRefs)
+        val multiArtistWithIds = Track(artist = "Prince, Sheila E.", artistIds = listOf("UCprince", "UCsheila"))
+        assertEquals(listOf("UCprince" to "Prince", "UCsheila" to "Sheila E."), multiArtistWithIds.artistRefs)
 
         val multiArtistCommaOnly = Track(artist = "Coldplay, BTS")
         assertEquals(listOf("Coldplay" to "Coldplay", "BTS" to "BTS"), multiArtistCommaOnly.artistRefs)
+    }
+
+    @Test
+    fun testInnerTubeSearch() = kotlinx.coroutines.runBlocking {
+        val result = com.blek.blexsy.data.InnerTubeService.search("bmth", limit = 10)
+        assertTrue(result.tracks.isNotEmpty(), "Tracks should not be empty")
+        assertTrue(result.tracks.any { it.title.isNotBlank() })
     }
 }

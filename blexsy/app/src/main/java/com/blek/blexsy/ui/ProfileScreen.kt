@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
@@ -47,7 +46,6 @@ fun ProfileScreen(
     userName: String,
     userEmail: String? = null,
     totalSpins: Int = 0,
-    api: BlexsyApiClient,
     player: BlexsyAudioPlayer,
     library: LibraryRepository? = null,
     onBack: () -> Unit = {},
@@ -64,7 +62,7 @@ fun ProfileScreen(
 ) {
     val scope = rememberCoroutineScope()
     val activeTrack by player.currentTrack.collectAsState()
-    val isGuest = api.token == null || api.token == "guest"
+    val isGuest = false
 
     var selectedTab by remember { mutableStateOf(0) } // 0: SPINS, 1: HEARTS, 2: CRATES
     val tabLabels = listOf(

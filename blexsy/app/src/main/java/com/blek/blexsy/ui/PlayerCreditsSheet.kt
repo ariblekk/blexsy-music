@@ -126,7 +126,7 @@ internal fun PlayerCreditsSheet(
                         }
                     }
 
-                    val sources = credits.sources.takeIf { it.isNotEmpty() } ?: listOf("Spotify", "YouTube Music")
+                    val sources = credits.sources.takeIf { it.isNotEmpty() } ?: listOf("YouTube Music")
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         shape = RoundedCornerShape(14.dp),

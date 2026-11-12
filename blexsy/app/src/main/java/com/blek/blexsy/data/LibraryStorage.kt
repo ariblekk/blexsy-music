@@ -4,42 +4,14 @@ import android.content.Context
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
-/** A library change that still has to be pushed to the server. */
-@Serializable
-enum class LibraryOpKind {
-    FAVORITE,
-    CREATE_PLAYLIST,
-    DELETE_PLAYLIST,
-    RECORD_RECENT,
-    UPDATE_PLAYLIST
-}
-
 /**
- * One queued, offline-first library mutation.
- *
- * [liked] is the *desired* state for [track] instead of a blind "toggle", so replaying an
- * operation after a flaky network call cannot flip the server twice.
- */
-@Serializable
-data class LibraryOp(
-    val kind: LibraryOpKind,
-    val track: Track? = null,
-    val liked: Boolean = false,
-    val localPlaylistId: String? = null,
-    val playlistName: String? = null,
-    val serverPlaylistId: String? = null,
-    val tracks: List<Track> = emptyList()
-)
-
-/**
- * Persistence for the local library mirror. The UI reads from this first so taps feel
- * instant; the network catches up in the background.
+ * Persistence for the user's library. Everything is local now: likes, playlists and recent
+ * spins never leave the device.
  */
 interface LibraryStorage {
     fun readFavorites(): List<Track>
@@ -50,8 +22,6 @@ interface LibraryStorage {
     fun writeRecent(tracks: List<Track>)
     fun readPlayCounts(): Map<String, Int> = emptyMap()
     fun writePlayCounts(counts: Map<String, Int>) {}
-    fun readOps(): List<LibraryOp>
-    fun writeOps(ops: List<LibraryOp>)
     fun clear()
 }
 
@@ -67,7 +37,6 @@ class PrefsLibraryStorage(context: Context) : LibraryStorage {
 
     private val tracksSerializer = ListSerializer(Track.serializer())
     private val playlistsSerializer = ListSerializer(Playlist.serializer())
-    private val opsSerializer = ListSerializer(LibraryOp.serializer())
     private val playCountsSerializer = MapSerializer(String.serializer(), Int.serializer())
 
     override fun readFavorites(): List<Track> = read(KEY_FAVORITES, tracksSerializer)
@@ -92,10 +61,6 @@ class PrefsLibraryStorage(context: Context) : LibraryStorage {
         prefs.edit().putString(KEY_PLAY_COUNTS, json.encodeToString(playCountsSerializer, counts)).apply()
     }
 
-    override fun readOps(): List<LibraryOp> = read(KEY_OPS, opsSerializer)
-
-    override fun writeOps(ops: List<LibraryOp>) = write(KEY_OPS, opsSerializer, ops)
-
     override fun clear() {
         prefs.edit().clear().apply()
     }
@@ -112,7 +77,6 @@ class PrefsLibraryStorage(context: Context) : LibraryStorage {
     private companion object {
         const val KEY_FAVORITES = "favorites"
         const val KEY_PLAYLISTS = "playlists"
-        const val KEY_OPS = "pending_ops"
         const val KEY_RECENT = "recent_spins"
         const val KEY_PLAY_COUNTS = "play_counts"
     }
@@ -124,7 +88,6 @@ class InMemoryLibraryStorage : LibraryStorage {
     private var playlists: List<Playlist> = emptyList()
     private var recent: List<Track> = emptyList()
     private var playCounts: Map<String, Int> = emptyMap()
-    private var ops: List<LibraryOp> = emptyList()
 
     override fun readFavorites(): List<Track> = favorites
     override fun writeFavorites(tracks: List<Track>) { favorites = tracks }
@@ -134,13 +97,10 @@ class InMemoryLibraryStorage : LibraryStorage {
     override fun writeRecent(tracks: List<Track>) { this.recent = tracks }
     override fun readPlayCounts(): Map<String, Int> = playCounts
     override fun writePlayCounts(counts: Map<String, Int>) { this.playCounts = counts }
-    override fun readOps(): List<LibraryOp> = ops
-    override fun writeOps(ops: List<LibraryOp>) { this.ops = ops }
     override fun clear() {
         favorites = emptyList()
         playlists = emptyList()
         recent = emptyList()
         playCounts = emptyMap()
-        ops = emptyList()
     }
 }

@@ -66,29 +66,21 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("blexsy_prefs", Context.MODE_PRIVATE)
         com.blek.blexsy.ui.BlexsyThemeConfig.init(this)
-        val savedToken = prefs.getString("auth_token", null)
         val savedName = prefs.getString("user_name", null)
-        val savedFavoriteArtists = prefs.getStringSet("favorite_artists", emptySet()) ?: emptySet()
 
         val api = BlexsyApiClient(
-            pbUrl = "https://pb.blek.my.id",
             cache = ApiCache(this),
             artistDb = com.blek.blexsy.data.ArtistDatabase(this)
-        ).apply {
-            token = savedToken
-            onUnauthorized = {
-                prefs.edit().remove("auth_token").apply()
-                token = "guest"
-            }
-        }
+        )
+        // A stable anonymous visitor identity makes the YouTube Music home feed personal.
+        com.blek.blexsy.data.InnerTubeService.init(this)
 
-        // Local-first library: likes, playlists, and recent spins are saved on device first
-        // and synced to the server in the background.
-        val libraryRepository = LibraryRepository(api, PrefsLibraryStorage(this)).also {
+        // Fully local library: likes, playlists and recent spins live on the device only.
+        val libraryRepository = LibraryRepository(PrefsLibraryStorage(this)).also {
             library = it
         }
 
-        val player = BlexsyMediaService.sharedPlayer ?: AndroidBlexsyAudioPlayer(this, api, libraryRepository).also {
+        val player = BlexsyMediaService.sharedPlayer ?: AndroidBlexsyAudioPlayer(this, libraryRepository).also {
             BlexsyMediaService.sharedPlayer = it
             BlexsyMediaService.start(this)
         }
@@ -98,26 +90,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 audioPlayer = player,
-                initialToken = savedToken,
                 initialUserName = savedName,
-                initialFavoriteArtists = savedFavoriteArtists,
                 library = libraryRepository,
-                apiClient = api,
-                onSaveToken = { token ->
-                    prefs.edit().apply {
-                        if (token == null) remove("auth_token") else putString("auth_token", token)
-                        apply()
-                    }
-                },
-                onSaveUserName = { name ->
-                    prefs.edit().apply {
-                        if (name == null) remove("user_name") else putString("user_name", name)
-                        apply()
-                    }
-                },
-                onSaveFavoriteArtists = { artists ->
-                    prefs.edit().putStringSet("favorite_artists", artists).apply()
-                }
+                apiClient = api
             )
         }
     }

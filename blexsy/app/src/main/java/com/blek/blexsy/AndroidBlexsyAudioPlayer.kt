@@ -51,7 +51,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class AndroidBlexsyAudioPlayer(
     private val context: Context,
-    private val api: BlexsyApiClient,
     var library: LibraryRepository? = null,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main)
 ) : BlexsyAudioPlayer {
@@ -216,12 +215,7 @@ class AndroidBlexsyAudioPlayer(
         appContext.getSharedPreferences("blexsy_player", Context.MODE_PRIVATE)
 
     private fun recordRecent(track: Track) {
-        val repo = library
-        if (repo != null) {
-            repo.recordRecent(track)
-        } else {
-            scope.launch { runCatching { api.recordRecent(track) } }
-        }
+        library?.recordRecent(track)
         onSpinRecorded?.invoke(track)
     }
 

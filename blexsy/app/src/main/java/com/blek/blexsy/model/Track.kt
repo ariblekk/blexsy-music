@@ -22,13 +22,9 @@ data class Track(
     @SerialName("artist_ids") val artistIds: List<String> = emptyList(),
     @SerialName("duration_ms") val durationMs: Long? = null,
     @SerialName("youtube_id") val youtubeId: String? = null,
-    @SerialName("audio_url") val audioUrl: String? = null,
-    @SerialName("spotify_url") val spotifyUrl: String? = null,
     @SerialName("played_at") val playedAt: String? = null,
     @SerialName("play_count") val playCount: Int? = null,
     val rank: Int? = null,
-    @SerialName("previous_rank") val previousRank: Int? = null,
-    @SerialName("rank_change") val rankChange: Int? = null,
     @SerialName("rank_status") val rankStatus: String? = null,
     val queueTier: QueueTier = QueueTier.CONTEXT,
     val queueEntryId: String? = null
@@ -44,18 +40,24 @@ data class Track(
             return "$minutes:${seconds.toString().padStart(2, '0')}"
         }
 
+    /**
+     * Artist references as (id, name) pairs. Ids are only ever real YouTube Music channel ids;
+     * when a track has no channel id the name is still returned as a label, but [artistRefs]
+     * keeps the id equal to the name, so callers must check [primaryArtistRef] before opening
+     * an artist page.
+     */
     val artistRefs: List<Pair<String, String>>
         get() {
             val names = artist.split(",").map { it.trim() }.filter { it.isNotBlank() }
-            if (artistIds.size > 1) {
-                return artistIds.mapIndexed { index, id ->
+            val channelIds = artistIds.filter { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
+            if (channelIds.size > 1) {
+                return channelIds.mapIndexed { index, id ->
                     id to (names.getOrNull(index) ?: id)
                 }
             }
             if (names.size > 1) {
                 return names.mapIndexed { index, name ->
-                    val id = artistIds.getOrNull(index)?.takeIf { it.isNotBlank() } ?: name
-                    id to name
+                    (channelIds.getOrNull(index) ?: name) to name
                 }
             }
             val singleId = primaryArtistRef
@@ -63,27 +65,18 @@ data class Track(
             return if (singleId != null) listOf(singleId to singleName) else emptyList()
         }
 
+    /** A real YouTube Music channel id for the primary artist, or null when unknown. */
     val primaryArtistRef: String?
-        get() = artistIds.firstOrNull()?.takeIf { it.isNotBlank() }
-            ?: artist.takeIf { it.isNotBlank() && !it.equals("Unknown artist", ignoreCase = true) }
+        get() = artistIds.firstOrNull { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
 
     val highResImage: String?
         get() = image.toHighResArtwork()
 }
 
 /**
- * Spotify CDN stores album art in 3 sizes:
- * - 64x64 (ab67616d00004851)
- * - 300x300 (ab67616d00001e02) -> default sent by backend
- * - 640x640 (ab67616d0000b273) -> crisp HD
- * And artist photos in:
- * - 160x160 (ab6761610000f178), 320x320 (ab67616100005174), 640x640 (ab6761610000e5eb)
+ * YouTube/Google artwork URLs carry their size in the query string, so asking for a larger
+ * variant is just a rewrite. Unknown hosts are returned unchanged.
  */
 fun String?.toHighResArtwork(): String? = this
-    ?.replace("ab67616d00001e02", "ab67616d0000b273")
-    ?.replace("ab67616d00004851", "ab67616d0000b273")
-    ?.replace("ab67616100005174", "ab6761610000e5eb")
-    ?.replace("ab6761610000f178", "ab6761610000e5eb")
     ?.replace(Regex("=w\\d+-h\\d+"), "=w1024-h1024")
     ?.replace(Regex("=s\\d+"), "=s1200")
-    ?.replace(Regex("/\\d+x\\d+-"), "/1000x1000-")

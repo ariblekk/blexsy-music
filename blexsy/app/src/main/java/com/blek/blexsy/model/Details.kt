@@ -35,7 +35,14 @@ data class ArtistSummary(
     val name: String = "Artist",
     val image: String? = null,
     val subscribers: String? = null
-)
+) {
+    /**
+     * A YouTube Music channel id, or null when this summary only carries a display name.
+     * Artist pages can only be opened with a real channel id.
+     */
+    val channelId: String?
+        get() = id.takeIf { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
+}
 
 @Serializable
 data class ArtistDetail(

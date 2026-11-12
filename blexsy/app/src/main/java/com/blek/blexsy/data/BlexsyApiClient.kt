@@ -4,6 +4,7 @@ import com.blek.blexsy.model.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -12,13 +13,15 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -29,6 +32,8 @@ import kotlinx.serialization.json.put
 class ApiException(message: String, val statusCode: Int? = null) : Exception(message)
 
 private const val TTL_CHART_MS = 24 * 60 * 60_000L // 1 day
+private const val TTL_HOME_SECTIONS_MS = 3 * 60 * 60_000L // 3 hours: keep the feed from feeling frozen
+private const val HOME_SECTIONS_KEY = "home_sections:active"
 private const val TTL_NEW_RELEASES_MS = 24 * 60 * 60_000L // 1 day
 private const val TTL_GENRES_MS = 7 * 24 * 60 * 60_000L
 private const val GENRES_KEY = "genres:all"
@@ -40,35 +45,26 @@ private val RECENT_SNAPSHOT_LIMITS = listOf(10, 20, 50)
 data class SearchResult(
     val tracks: List<Track>,
     val artists: List<ArtistSummary> = emptyList(),
-    val hasMore: Boolean = false,
-    val offset: Int = 0
+    val albums: List<AlbumSummary> = emptyList(),
+    val playlists: List<GenrePlaylist> = emptyList(),
+    /** Opaque token for the next page; null when the result set is exhausted. */
+    val continuation: String? = null,
+    /**
+     * Set when the page could not be fetched at all, as opposed to fetched-and-empty. Callers
+     * need the distinction to offer a retry instead of reporting "no results".
+     */
+    val failed: Boolean = false
 )
 
+/**
+ * Catalog facade over [InnerTubeService]. Everything here — home, charts, new releases,
+ * search, albums, artists, playlists, genres — comes from YouTube Music. Lyrics and credits
+ * still fan out to their own providers at the bottom of the file.
+ */
 class BlexsyApiClient(
-    pbUrl: String = "https://pb.blek.my.id",
     private val cache: ApiCache? = null,
     val artistDb: ArtistDatabase? = null
-) : LibraryApi {
-    var pbUrl: String = pbUrl.trimEnd('/')
-        set(value) { field = value.trimEnd('/') }
-    // ponytail: extract PocketBase user ID from JWT or auth record; ceiling is guest/offline mode.
-    var currentUserId: String? = null
-    val userId: String?
-        get() = currentUserId ?: token?.let { extractUserIdFromJwt(it) }
-    var lastOtpId: String? = null
-
-    override var token: String? = null
-        set(value) {
-            field = value
-            if (value != null && value != "guest") {
-                val parsedId = extractUserIdFromJwt(value)
-                if (parsedId != null) currentUserId = parsedId
-            } else {
-                currentUserId = null
-            }
-        }
-    var onUnauthorized: (() -> Unit)? = null
-
+) {
     val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -79,6 +75,10 @@ class BlexsyApiClient(
         install(ContentNegotiation) {
             json(json)
         }
+        install(ContentEncoding) {
+            gzip()
+            deflate()
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 20_000
             connectTimeoutMillis = 15_000
@@ -88,61 +88,21 @@ class BlexsyApiClient(
         }
     }
 
-    private fun extractUserIdFromJwt(jwt: String): String? {
-        return runCatching {
-            val parts = jwt.split(".")
-            if (parts.size < 2) return null
-            val b64 = parts[1].replace('-', '+').replace('_', '/')
-            val padded = b64 + "=".repeat((4 - b64.length % 4) % 4)
-            val bytes = try {
-                java.util.Base64.getDecoder().decode(padded)
-            } catch (_: Throwable) {
-                android.util.Base64.decode(padded, android.util.Base64.DEFAULT)
-            }
-            val jsonStr = String(bytes, Charsets.UTF_8)
-            val obj = json.parseToJsonElement(jsonStr).jsonObject
-            obj["id"]?.jsonPrimitive?.contentOrNull
-        }.getOrNull()
-    }
-
-    private fun HttpRequestBuilder.applyAuth() {
-        header(HttpHeaders.Accept, "application/json")
-        token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-    }
-
-    private suspend fun checkResponse(response: HttpResponse): String {
-        if (response.status == HttpStatusCode.Unauthorized) {
-            onUnauthorized?.invoke()
-        }
-        val bodyText = response.bodyAsText()
-        if (!response.status.isSuccess()) {
-            val errorMsg = try {
-                val elem = json.parseToJsonElement(bodyText).jsonObject
-                elem["message"]?.jsonPrimitive?.content
-                    ?: elem["detail"]?.jsonPrimitive?.content
-                    ?: "Request failed (${response.status.value})"
-            } catch (_: Exception) {
-                if (response.status.value >= 500) {
-                    "Server tripped up. Give it another shot soon."
-                } else {
-                    "Server returned an invalid response."
-                }
-            }
-            throw ApiException(errorMsg, response.status.value)
-        }
-        return bodyText
-    }
-
     // ---------------------------------------------------------------------
     // Disk cache: fresh entries are returned without touching the network, and
     // stale entries are used as a fallback when the server is unreachable. This is
     // what makes a cold start / second visit to an album feel instant.
     // ---------------------------------------------------------------------
 
-    private suspend fun cachedText(key: String, ttlMs: Long, fetch: suspend () -> String): String {
+    private suspend fun cachedText(
+        key: String,
+        ttlMs: Long,
+        refresh: Boolean = false,
+        fetch: suspend () -> String
+    ): String {
         val cached = cache?.read(key)
         val age = cached?.let { System.currentTimeMillis() - it.savedAt }
-        if (cached != null && age != null && age in 0 until ttlMs) {
+        if (!refresh && cached != null && age != null && age in 0 until ttlMs) {
             return cached.body
         }
         return try {
@@ -154,338 +114,153 @@ class BlexsyApiClient(
         }
     }
 
+    suspend fun clearHomeFeedCache() {
+        cache?.let { c ->
+            c.evict(HOME_SECTIONS_KEY)
+            c.evict(chartKey(50))
+            c.evict("new_releases:yt:30")
+            c.evict(GENRES_KEY)
+            c.evict(popularArtistsKey(20))
+        }
+    }
+
     /** Snapshot helpers used by the home screen to paint before the network answers. */
-    suspend fun chartSnapshot(limit: Int = 50): List<Track>? =
+    suspend fun homeSectionsSnapshot(): List<HomeSection>? =
+        cache?.read(HOME_SECTIONS_KEY)?.let { entry ->
+            runCatching { json.decodeFromString<List<HomeSection>>(entry.body) }.getOrNull()
+        }
+
+    suspend fun chartSnapshot(limit: Int = 50): ChartFeed? =
         cache?.read(chartKey(limit))?.let { entry ->
-            runCatching { parseChart(entry.body) }.getOrNull()
+            runCatching { json.decodeFromString<ChartFeed>(entry.body) }.getOrNull()
+        }
+
+    suspend fun topArtistsSnapshot(limit: Int = 20): List<ArtistSummary>? =
+        cache?.read(popularArtistsKey(limit))?.let { entry ->
+            runCatching { json.decodeFromString<List<ArtistSummary>>(entry.body) }.getOrNull()
         }
 
     suspend fun newReleasesSnapshot(limit: Int = 30): List<AlbumSummary>? =
-        cache?.read("new_releases:dz:$limit")?.let { entry ->
-            runCatching { json.decodeFromString(ListSerializer(AlbumSummary.serializer()), entry.body) }.getOrNull()
+        cache?.read("new_releases:yt:$limit")?.let { entry ->
+            runCatching { json.decodeFromString<List<AlbumSummary>>(entry.body) }.getOrNull()
         }
 
     suspend fun genresSnapshot(): List<Genre>? =
         cache?.read(GENRES_KEY)?.let { entry ->
-            runCatching { parseGenres(entry.body) }.getOrNull()
+            runCatching { json.decodeFromString<List<Genre>>(entry.body) }.getOrNull()
         }
 
-    suspend fun recentSnapshot(limit: Int = 50): List<Track>? =
-        cache?.read(recentKey(limit))?.let { entry ->
-            runCatching { json.decodeFromString<List<Track>>(entry.body) }.getOrNull()
+    private fun chartKey(limit: Int) = "chart_yt:$limit"
+
+    private fun popularArtistsKey(limit: Int) = "popular_artists_yt:$limit"
+
+    /** Reads a cache entry only while it is younger than [ttlMs]; stale entries are ignored. */
+    private suspend inline fun <reified T> freshCache(key: String, ttlMs: Long, refresh: Boolean): T? {
+        if (refresh) {
+            cache?.evict(key)
+            return null
         }
-
-    private fun chartKey(limit: Int) = "chart:$limit"
-
-    private fun recentKey(limit: Int) = "recent:${token ?: "guest"}:$limit"
-
-    private fun parseChart(text: String): List<Track> {
-        val obj = json.parseToJsonElement(text).jsonObject
-        val arr = obj["tracks"]?.jsonArray ?: return emptyList()
-        return arr.map { json.decodeFromJsonElement(Track.serializer(), it) }
+        val entry = cache?.read(key) ?: return null
+        if (System.currentTimeMillis() - entry.savedAt > ttlMs) return null
+        return runCatching { json.decodeFromString<T>(entry.body) }.getOrNull()
     }
 
-    private fun parseGenres(text: String): List<Genre> =
-        runCatching { json.decodeFromString(ListSerializer(Genre.serializer()), text) }.getOrDefault(emptyList())
-
-    suspend fun health(): Boolean = try {
-        client.get("$pbUrl/api/health").status.isSuccess()
-    } catch (_: Exception) {
-        false
+    suspend fun chart(limit: Int = 50, refresh: Boolean = false): ChartFeed {
+        val key = chartKey(limit)
+        freshCache<ChartFeed>(key, TTL_CHART_MS, refresh)?.let { if (it.tracks.isNotEmpty()) return it }
+        val feeds = runCatching { InnerTubeService.getCharts(limit) }.getOrDefault(emptyList())
+        val feed = feeds.firstOrNull() ?: ChartFeed(title = "Top Indonesia", tracks = emptyList())
+        if (feed.tracks.isNotEmpty()) cache?.write(key, json.encodeToString(feed))
+        return feed
     }
 
-    suspend fun requestOtp(email: String, name: String? = null): JsonObject {
-        val cleanEmail = email.trim()
-        val randomPass = java.util.UUID.randomUUID().toString() + "Aa1!"
-        // ponytail: pre-register user if not present; PocketBase OTP requires existing auth record.
-        runCatching {
-            client.post("$pbUrl/api/collections/users/records") {
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("email", cleanEmail)
-                    put("password", randomPass)
-                    put("passwordConfirm", randomPass)
-                    put("name", name?.trim() ?: cleanEmail.substringBefore("@"))
-                })
-            }
-        }
-        val res = client.post("$pbUrl/api/collections/users/request-otp") {
-            contentType(ContentType.Application.Json)
-            setBody(buildJsonObject {
-                put("email", cleanEmail)
-            })
-        }
-        val text = checkResponse(res)
-        val obj = json.parseToJsonElement(text).jsonObject
-        lastOtpId = obj["otpId"]?.jsonPrimitive?.contentOrNull
-        return obj
-    }
-
-    suspend fun verifyOtp(email: String, code: String): JsonObject {
-        val otpId = lastOtpId ?: throw ApiException("Please request an OTP code first.", 400)
-        val res = client.post("$pbUrl/api/collections/users/auth-with-otp") {
-            contentType(ContentType.Application.Json)
-            setBody(buildJsonObject {
-                put("otpId", otpId)
-                put("password", code.trim())
-            })
-        }
-        val text = checkResponse(res)
-        val parsed = json.parseToJsonElement(text).jsonObject
-        val userRecord = parsed["record"]?.jsonObject ?: buildJsonObject {}
-        val authToken = parsed["token"]?.jsonPrimitive?.contentOrNull
-        if (authToken != null) {
-            token = authToken
-        }
-        userRecord["id"]?.jsonPrimitive?.contentOrNull?.let {
-            currentUserId = it
-        }
-        return buildJsonObject {
-            authToken?.let { put("token", it) }
-            put("user", userRecord)
-            put("record", userRecord)
-        }
-    }
-
-    suspend fun me(): JsonObject {
-        val res = client.post("$pbUrl/api/collections/users/auth-refresh") { applyAuth() }
-        val text = checkResponse(res)
-        val parsed = json.parseToJsonElement(text).jsonObject
-        val userRecord = parsed["record"]?.jsonObject ?: buildJsonObject {}
-        parsed["token"]?.jsonPrimitive?.contentOrNull?.let { refreshed ->
-            token = refreshed
-        }
-        userRecord["id"]?.jsonPrimitive?.contentOrNull?.let {
-            currentUserId = it
-        }
-        return buildJsonObject {
-            put("user", userRecord)
-            put("record", userRecord)
-            parsed["token"]?.let { put("token", it) }
-        }
-    }
-
-    suspend fun chart(limit: Int = 50): List<Track> {
-        val text = cachedText(chartKey(limit), TTL_CHART_MS) {
-            val dzTracks = runCatching { DeezerService.getChartTracks(limit) }.getOrNull().orEmpty()
-            val tracks = if (dzTracks.isNotEmpty()) dzTracks else {
-                runCatching { InnerTubeService.getTrendingTracks(limit) }.getOrNull().orEmpty()
-            }
-            buildJsonObject {
-                put("tracks", json.encodeToJsonElement(ListSerializer(Track.serializer()), tracks))
-            }.toString()
-        }
-        val tracks = parseChart(text)
-        return if (tracks.isNotEmpty()) tracks else {
-            runCatching { DeezerService.getChartTracks(limit) }.getOrNull()
-                ?: runCatching { InnerTubeService.getTrendingTracks(limit) }.getOrNull().orEmpty()
-        }
-    }
-
-    suspend fun search(query: String, offset: Int = 0, limit: Int = 10): SearchResult = coroutineScope {
-        val spTracksDeferred = async { runCatching { SpotipyFreeService.searchTracks(query, limit = limit) }.getOrNull() }
-        val dzTracksDeferred = async { runCatching { DeezerService.searchTracks(query, limit = limit) }.getOrNull() }
-        val ytTracksDeferred = async { runCatching { InnerTubeService.searchTracks(query, limit = limit) }.getOrNull() }
-        val dzArtistsDeferred = async { runCatching { DeezerService.searchArtists(query, limit = 3) }.getOrNull() }
-        val ytArtistsDeferred = async { runCatching { InnerTubeService.searchArtists(query, limit = 3) }.getOrNull() }
-
-        val spTracks = spTracksDeferred.await().orEmpty()
-        val dzTracks = dzTracksDeferred.await().orEmpty()
-        val ytTracks = ytTracksDeferred.await().orEmpty()
-        val tracks = if (spTracks.isNotEmpty()) spTracks else if (dzTracks.isNotEmpty()) dzTracks else ytTracks
-
-        val dzArtists = dzArtistsDeferred.await().orEmpty()
-        val ytArtists = ytArtistsDeferred.await().orEmpty()
-        val artists = if (dzArtists.isNotEmpty()) dzArtists else ytArtists
-
-        SearchResult(
-            tracks = tracks,
-            artists = artists,
-            hasMore = false,
-            offset = offset + tracks.size
-        )
-    }
-
-    suspend fun newReleases(limit: Int = 30): List<AlbumSummary> {
-        val key = "new_releases:dz:$limit"
-        val text = cachedText(key, TTL_NEW_RELEASES_MS) {
-            val albums = runCatching { DeezerService.getNewReleases(limit) }.getOrNull().orEmpty()
-                .ifEmpty { runCatching { InnerTubeService.getNewReleaseAlbums(limit) }.getOrNull().orEmpty() }
-            json.encodeToString(ListSerializer(AlbumSummary.serializer()), albums)
-        }
-        val cached = runCatching {
-            json.decodeFromString(ListSerializer(AlbumSummary.serializer()), text)
-        }.getOrNull()
-        if (!cached.isNullOrEmpty()) return cached
-        return runCatching { DeezerService.getNewReleases(limit) }.getOrNull()
-            ?: runCatching { InnerTubeService.getNewReleaseAlbums(limit) }.getOrNull().orEmpty()
-    }
-
-    private suspend fun scrapeSpotifyEmbed(playlistId: String, limit: Int): List<Track> {
-        val res = client.get("https://open.spotify.com/embed/playlist/$playlistId") {
-            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        }
-        if (!res.status.isSuccess()) return emptyList()
-        val html = res.bodyAsText()
-        val match = Regex("""<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>""").find(html) ?: return emptyList()
-        val root = json.parseToJsonElement(match.groupValues[1]).jsonObject
-        val entity = root["props"]?.jsonObject?.get("pageProps")?.jsonObject?.get("state")?.jsonObject
-            ?.get("data")?.jsonObject?.get("entity")?.jsonObject ?: return emptyList()
-        val playlistCover = entity["coverArt"]?.jsonObject?.get("sources")?.jsonArray?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-            ?: entity["visualIdentity"]?.jsonObject?.get("image")?.jsonArray?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-        val trackList = entity["trackList"]?.jsonArray ?: return emptyList()
-
-        val rawTracks = trackList.take(limit).mapIndexed { index, el ->
-            val item = el.jsonObject
-            val uri = item["uri"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            val id = uri.substringAfterLast(":", uri)
-            val title = item["title"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            val artist = item["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty().replace('\u00A0', ' ')
-            val durationMs = item["duration"]?.jsonPrimitive?.longOrNull
-            val previewUrl = item["audioPreview"]?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-
-            Track(
-                id = id,
-                title = title,
-                artist = artist,
-                album = title,
-                image = playlistCover,
-                durationMs = durationMs,
-                audioUrl = previewUrl,
-                spotifyUrl = "https://open.spotify.com/track/$id",
-                rank = index + 1,
-                rankStatus = "same"
+    suspend fun search(query: String, continuation: String? = null, limit: Int = 20): SearchResult {
+        return try {
+            val page = InnerTubeService.search(query, continuation = continuation, limit = limit)
+            SearchResult(
+                tracks = page.tracks,
+                artists = page.artists,
+                albums = page.albums,
+                playlists = page.playlists,
+                continuation = page.continuation
             )
+        } catch (_: Exception) {
+            SearchResult(emptyList(), failed = true)
         }
+    }
 
-        return rawTracks
+    suspend fun newReleases(limit: Int = 30, refresh: Boolean = false): List<AlbumSummary> {
+        val key = "new_releases:yt:$limit"
+        freshCache<List<AlbumSummary>>(key, TTL_NEW_RELEASES_MS, refresh)?.let { if (it.isNotEmpty()) return it }
+        val albums = runCatching { InnerTubeService.getNewReleases(limit) }.getOrDefault(emptyList())
+        if (albums.isNotEmpty()) cache?.write(key, json.encodeToString(albums))
+        return albums
     }
 
     suspend fun album(id: String): AlbumDetail {
-        if (id.startsWith("dz_") || id.all { it.isDigit() }) {
-            val dzAlbum = runCatching { DeezerService.getAlbumDetail(id) }.getOrNull()
-            if (dzAlbum != null) return dzAlbum
-        }
-        val spAlbum = runCatching { SpotipyFreeService.getAlbum(id) }.getOrNull()
-        if (spAlbum != null) return spAlbum
-        val ytAlbum = runCatching { InnerTubeService.getAlbumDetail(id) }.getOrNull()
-        if (ytAlbum != null) return ytAlbum
-        val dzAlbum = runCatching { DeezerService.getAlbumDetail(id) }.getOrNull()
-        if (dzAlbum != null) return dzAlbum
-        return scrapeSpotifyAlbumEmbed(id) ?: throw ApiException("Album not found")
+        return InnerTubeService.getAlbum(id) ?: throw ApiException("Album not found")
     }
 
-    private suspend fun scrapeSpotifyAlbumEmbed(albumId: String): AlbumDetail? = runCatching {
-        val res = client.get("https://open.spotify.com/embed/album/$albumId") {
-            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        }
-        if (!res.status.isSuccess()) return@runCatching null
-        val html = res.bodyAsText()
-        val match = Regex("""<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>""").find(html) ?: return@runCatching null
-        val root = json.parseToJsonElement(match.groupValues[1]).jsonObject
-        val entity = root["props"]?.jsonObject?.get("pageProps")?.jsonObject?.get("state")?.jsonObject
-            ?.get("data")?.jsonObject?.get("entity")?.jsonObject ?: return@runCatching null
-        val name = entity["title"]?.jsonPrimitive?.contentOrNull ?: entity["name"]?.jsonPrimitive?.contentOrNull ?: "Album"
-        val artist = entity["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty().replace('\u00A0', ' ')
-        val cover = entity["coverArt"]?.jsonObject?.get("sources")?.jsonArray?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-            ?: entity["visualIdentity"]?.jsonObject?.get("image")?.jsonArray?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-        val trackList = entity["trackList"]?.jsonArray ?: return@runCatching null
-        val tracks = trackList.mapIndexed { index, el ->
-            val item = el.jsonObject
-            val uri = item["uri"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            val trackId = uri.substringAfterLast(":", uri)
-            val title = item["title"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            val trackArtist = item["subtitle"]?.jsonPrimitive?.contentOrNull?.replace('\u00A0', ' ')?.ifBlank { artist } ?: artist
-            val durationMs = item["duration"]?.jsonPrimitive?.longOrNull
-            val preview = item["audioPreview"]?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-            Track(
-                id = trackId,
-                title = title,
-                artist = trackArtist,
-                album = name,
-                albumId = albumId,
-                image = cover,
-                durationMs = durationMs,
-                audioUrl = preview,
-                spotifyUrl = "https://open.spotify.com/track/$trackId",
-                rank = index + 1
-            )
-        }
-        AlbumDetail(
-            id = albumId,
-            name = name,
-            artist = artist,
-            image = cover,
-            tracks = tracks
-        )
-    }.getOrNull()
-
-    suspend fun topArtists(limit: Int = 20): List<ArtistSummary> {
-        val ytArtists = runCatching { InnerTubeService.getTopArtists(limit) }.getOrNull()
-        if (!ytArtists.isNullOrEmpty()) return ytArtists
-        return emptyList()
+    suspend fun homeSections(refresh: Boolean = false): List<HomeSection> {
+        val key = HOME_SECTIONS_KEY
+        freshCache<List<HomeSection>>(key, TTL_HOME_SECTIONS_MS, refresh)?.let { if (it.isNotEmpty()) return it }
+        val sections = runCatching { InnerTubeService.getHome() }.getOrDefault(emptyList())
+        if (sections.isNotEmpty()) cache?.write(key, json.encodeToString(sections))
+        return sections
     }
 
-    suspend fun searchArtists(query: String, limit: Int = 10): List<ArtistSummary> {
-        val dzArtists = runCatching { DeezerService.searchArtists(query, limit) }.getOrNull().orEmpty()
-        if (dzArtists.isNotEmpty()) return dzArtists
-        val ytArtists = runCatching { InnerTubeService.searchArtists(query, limit) }.getOrNull()
-        if (!ytArtists.isNullOrEmpty()) return ytArtists
-        return emptyList()
+    suspend fun topArtists(limit: Int = 30, refresh: Boolean = false): List<ArtistSummary> {
+        val key = popularArtistsKey(limit)
+        freshCache<List<ArtistSummary>>(key, TTL_CHART_MS, refresh)?.let { if (it.isNotEmpty()) return it }
+        val artists = runCatching { InnerTubeService.getTopArtists(limit) }.getOrDefault(emptyList())
+        if (artists.isNotEmpty()) cache?.write(key, json.encodeToString(artists))
+        return artists
     }
 
-    suspend fun cachedArtist(id: String): ArtistDetail? = artistDb?.get(id)
+    suspend fun searchArtists(query: String, limit: Int = 10): List<ArtistSummary> =
+        runCatching { InnerTubeService.searchArtists(query, limit) }.getOrDefault(emptyList())
+
+    /** YouTube Music artist ids are channel ids (`UC…`) or `FEmusic_artist…` browse ids. */
+    private fun isYouTubeArtistId(id: String): Boolean =
+        id.startsWith("UC") || id.startsWith("FEmusic_artist")
+
+    suspend fun cachedArtist(id: String): ArtistDetail? =
+        if (isYouTubeArtistId(id)) artistDb?.get(id) else null
 
     suspend fun artist(id: String): ArtistDetail {
-        if (id.startsWith("dz_") || id.all { it.isDigit() }) {
-            val dzArtist = runCatching { DeezerService.getArtistDetail(id) }.getOrNull()
-            if (dzArtist != null) {
-                artistDb?.put(dzArtist)
-                return dzArtist
-            }
+        // Anything that is not a YouTube Music id is a leftover from the old Spotify catalog.
+        if (!isYouTubeArtistId(id)) {
+            throw ApiException("Artist not available for this id", 0)
         }
-        val ytArtist = runCatching { InnerTubeService.getArtistDetail(id) }.getOrNull()
-        if (ytArtist != null) {
-            artistDb?.put(ytArtist)
-            return ytArtist
-        }
-        val dzArtist = runCatching { DeezerService.getArtistDetail(id) }.getOrNull()
-        if (dzArtist != null) {
-            artistDb?.put(dzArtist)
-            return dzArtist
+        val fetched = runCatching { InnerTubeService.getArtist(id) }.getOrNull()
+        if (fetched != null) {
+            artistDb?.put(fetched)
+            return fetched
         }
         return artistDb?.get(id) ?: throw ApiException("Failed to load artist", 0)
     }
 
-    suspend fun genres(): List<Genre> {
-        val cached = cache?.read(GENRES_KEY)?.let { entry ->
-            val age = System.currentTimeMillis() - entry.savedAt
-            if (age in 0 until TTL_GENRES_MS) parseGenres(entry.body) else null
-        }
-        if (!cached.isNullOrEmpty()) return cached
-        val fetched = runCatching { InnerTubeService.getGenres() }.getOrDefault(emptyList())
-        if (fetched.isNotEmpty()) {
-            runCatching {
-                cache?.write(GENRES_KEY, json.encodeToString(ListSerializer(Genre.serializer()), fetched))
-            }
-        }
-        return fetched
+    suspend fun genres(refresh: Boolean = false): List<Genre> {
+        val key = GENRES_KEY
+        if (refresh) cache?.evict(key)
+        val cached = if (!refresh) {
+            runCatching { cache?.read(key)?.let { json.decodeFromString<List<Genre>>(it.body) } }.getOrNull()
+        } else null
+        if (!cached.isNullOrEmpty() && !refresh) return cached
+        val genres = runCatching { InnerTubeService.getGenres() }.getOrDefault(emptyList())
+        if (genres.isNotEmpty()) cache?.write(key, json.encodeToString(genres))
+        return genres
     }
 
     suspend fun genrePlaylists(id: String): List<GenrePlaylist> {
-        return runCatching { InnerTubeService.getGenrePlaylists(id, id) }.getOrNull().orEmpty()
+        return runCatching { InnerTubeService.getGenrePlaylists(id) }.getOrDefault(emptyList())
     }
 
-    suspend fun spotifyPlaylistDetail(id: String, fetchAll: Boolean = true): Pair<String, List<Track>> {
-        val spTracks = runCatching { SpotipyFreeService.getPlaylistTracks(id) }.getOrNull()?.takeIf { it.isNotEmpty() }
-        if (spTracks != null) return "Playlist" to spTracks
-        val ytRes = runCatching { InnerTubeService.getPlaylistTracks(id) }.getOrNull()?.takeIf { it.second.isNotEmpty() }
-        if (ytRes != null) return ytRes
-        val scraped = runCatching { scrapeSpotifyEmbed(id, if (fetchAll) 100 else 50) }.getOrNull().orEmpty()
-        return "Playlist" to scraped
+    suspend fun playlistDetail(id: String, fetchAll: Boolean = true): Pair<String, List<Track>> {
+        return runCatching { InnerTubeService.getPlaylist(id) }.getOrDefault("" to emptyList())
     }
 
-    suspend fun playlist(id: String): List<Track> = spotifyPlaylistDetail(id).second
+    suspend fun playlist(id: String): List<Track> = playlistDetail(id).second
 
     private fun cleanForLyricsSearch(title: String): String {
         var s = title
@@ -1013,246 +788,6 @@ class BlexsyApiClient(
         return body.dropLast(tailCut).joinToString("\n")
     }
 
-    suspend fun streamUrl(track: Track, refresh: Boolean = false): String {
-        return InnerTubeService.resolveTrackStream(null, track) ?: throw ApiException("Audio stream not found")
-    }
-
-    private fun parseIsoToMillis(iso: String): Long {
-        if (iso.isBlank()) return 0L
-        return try {
-            val clean = iso.replace(" ", "T")
-            val pattern = if (clean.contains(".")) "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" else "yyyy-MM-dd'T'HH:mm:ss'Z'"
-            val sdf = java.text.SimpleDateFormat(pattern, java.util.Locale.US).apply {
-                timeZone = java.util.TimeZone.getTimeZone("UTC")
-            }
-            sdf.parse(clean)?.time ?: 0L
-        } catch (_: Exception) {
-            0L
-        }
-    }
-
-    override suspend fun getFavorites(): List<Track> {
-        if (token == null || token == "guest") return emptyList()
-        val res = client.get("$pbUrl/api/collections/favorites/records") {
-            applyAuth()
-            parameter("perPage", 500)
-            parameter("sort", "-created")
-        }
-        val text = checkResponse(res)
-        val obj = json.parseToJsonElement(text).jsonObject
-        val items = obj["items"]?.jsonArray ?: return emptyList()
-        return items.mapNotNull { item ->
-            item.jsonObject["track_data"]?.let {
-                runCatching { json.decodeFromJsonElement(Track.serializer(), it) }.getOrNull()
-            }
-        }
-    }
-
-    override suspend fun toggleFavorite(track: Track) {
-        if (token == null || token == "guest") return
-        val escapedId = track.id.replace("'", "\\'")
-        val findRes = client.get("$pbUrl/api/collections/favorites/records") {
-            applyAuth()
-            parameter("filter", "track_id='$escapedId'")
-            parameter("perPage", 1)
-        }
-        val findText = checkResponse(findRes)
-        val findObj = json.parseToJsonElement(findText).jsonObject
-        val existing = findObj["items"]?.jsonArray?.firstOrNull()?.jsonObject
-        if (existing != null) {
-            val recordId = existing["id"]?.jsonPrimitive?.content ?: return
-            val delRes = client.delete("$pbUrl/api/collections/favorites/records/$recordId") { applyAuth() }
-            checkResponse(delRes)
-        } else {
-            val uid = userId
-            val postRes = client.post("$pbUrl/api/collections/favorites/records") {
-                applyAuth()
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    uid?.let { put("user", it) }
-                    put("track_id", track.id)
-                    put("track_data", json.encodeToJsonElement(Track.serializer(), track))
-                })
-            }
-            checkResponse(postRes)
-        }
-    }
-
-    override suspend fun getRecent(limit: Int): List<Track> {
-        if (token == null || token == "guest") return emptyList()
-        val text = cachedText(recentKey(limit), TTL_RECENT_MS) {
-            checkResponse(client.get("$pbUrl/api/collections/recents/records") {
-                applyAuth()
-                parameter("perPage", limit)
-                parameter("sort", "-played_at")
-            })
-        }
-        val obj = json.parseToJsonElement(text).jsonObject
-        val items = obj["items"]?.jsonArray ?: return emptyList()
-        return items.mapNotNull { item ->
-            val rec = item.jsonObject
-            val trackData = rec["track_data"]?.let {
-                runCatching { json.decodeFromJsonElement(Track.serializer(), it) }.getOrNull()
-            } ?: return@mapNotNull null
-            val playedAt = rec["played_at"]?.jsonPrimitive?.contentOrNull ?: trackData.playedAt
-            val playCount = rec["play_count"]?.jsonPrimitive?.intOrNull ?: trackData.playCount
-            trackData.copy(playedAt = playedAt, playCount = playCount)
-        }
-    }
-
-    override suspend fun recordRecent(track: Track) {
-        if (token == null || token == "guest") return
-        val stampedTrack = if (track.playedAt.isNullOrBlank()) {
-            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
-                timeZone = java.util.TimeZone.getTimeZone("UTC")
-            }
-            track.copy(playedAt = sdf.format(java.util.Date()))
-        } else track
-
-        val escapedId = stampedTrack.id.replace("'", "\\'")
-        val findRes = client.get("$pbUrl/api/collections/recents/records") {
-            applyAuth()
-            parameter("filter", "track_id='$escapedId'")
-            parameter("perPage", 1)
-        }
-        val findText = checkResponse(findRes)
-        val findObj = json.parseToJsonElement(findText).jsonObject
-        val existing = findObj["items"]?.jsonArray?.firstOrNull()?.jsonObject
-
-        if (existing != null) {
-            val recordId = existing["id"]?.jsonPrimitive?.content ?: return
-            val prevCount = existing["play_count"]?.jsonPrimitive?.intOrNull ?: 1
-            val patchRes = client.patch("$pbUrl/api/collections/recents/records/$recordId") {
-                applyAuth()
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("track_data", json.encodeToJsonElement(Track.serializer(), stampedTrack))
-                    put("play_count", prevCount + 1)
-                    put("played_at", stampedTrack.playedAt ?: "")
-                })
-            }
-            checkResponse(patchRes)
-        } else {
-            val uid = userId
-            val postRes = client.post("$pbUrl/api/collections/recents/records") {
-                applyAuth()
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    uid?.let { put("user", it) }
-                    put("track_id", stampedTrack.id)
-                    put("track_data", json.encodeToJsonElement(Track.serializer(), stampedTrack))
-                    put("play_count", 1)
-                    put("played_at", stampedTrack.playedAt ?: "")
-                })
-            }
-            checkResponse(postRes)
-        }
-
-        // ponytail: atomically increment denormalized total_spins counter on users record.
-        userId?.let { uid ->
-            runCatching {
-                client.patch("$pbUrl/api/collections/users/records/$uid") {
-                    applyAuth()
-                    contentType(ContentType.Application.Json)
-                    setBody(buildJsonObject {
-                        put("total_spins+", 1)
-                    })
-                }
-            }
-        }
-
-        // Keep the offline snapshots in sync with what was just played, otherwise
-        // opening the Profile tab within the 60s TTL would omit the new track.
-        updateRecentSnapshots(stampedTrack)
-    }
-
-    private suspend fun updateRecentSnapshots(track: Track) {
-        val store = cache ?: return
-        for (limit in RECENT_SNAPSHOT_LIMITS) {
-            val key = recentKey(limit)
-            val entry = store.read(key) ?: continue
-            val list = runCatching {
-                json.decodeFromString<List<Track>>(entry.body)
-            }.getOrNull() ?: continue
-            val updated = (listOf(track) + list.filterNot { it.id == track.id }).take(limit)
-            store.write(key, json.encodeToString(updated))
-        }
-    }
-
-    override suspend fun getPlaylists(): List<Playlist> {
-        if (token == null || token == "guest") return emptyList()
-        // ponytail: sort client-side; PocketBase collections imported without autodate fail on sort=-updated.
-        val res = client.get("$pbUrl/api/collections/playlists/records") {
-            applyAuth()
-            parameter("perPage", 200)
-        }
-        val text = checkResponse(res)
-        val obj = json.parseToJsonElement(text).jsonObject
-        val items = obj["items"]?.jsonArray ?: return emptyList()
-        return items.map { item ->
-            val rec = item.jsonObject
-            val tracks = rec["tracks"]?.let {
-                runCatching { json.decodeFromJsonElement(ListSerializer(Track.serializer()), it) }.getOrNull()
-            } ?: emptyList()
-            val updatedIso = rec["updated"]?.jsonPrimitive?.contentOrNull
-                ?: rec["created"]?.jsonPrimitive?.contentOrNull
-                ?: ""
-            Playlist(
-                id = rec["id"]?.jsonPrimitive?.content ?: "",
-                name = rec["name"]?.jsonPrimitive?.content ?: "Playlist",
-                tracks = tracks,
-                updatedAt = parseIsoToMillis(updatedIso)
-            )
-        }.sortedByDescending { it.updatedAt }
-    }
-
-    override suspend fun createPlaylist(name: String, track: Track?): Playlist =
-        createPlaylistWithTracks(name, if (track != null) listOf(track) else emptyList())
-
-    override suspend fun createPlaylistWithTracks(name: String, tracks: List<Track>): Playlist {
-        val uid = userId
-        val res = client.post("$pbUrl/api/collections/playlists/records") {
-            applyAuth()
-            contentType(ContentType.Application.Json)
-            setBody(buildJsonObject {
-                uid?.let { put("user", it) }
-                put("name", name)
-                put("tracks", json.encodeToJsonElement(ListSerializer(Track.serializer()), tracks))
-            })
-        }
-        val text = checkResponse(res)
-        val rec = json.parseToJsonElement(text).jsonObject
-        val returnedTracks = rec["tracks"]?.let {
-            runCatching { json.decodeFromJsonElement(ListSerializer(Track.serializer()), it) }.getOrNull()
-        } ?: tracks
-        val updatedMillis = parseIsoToMillis(rec["updated"]?.jsonPrimitive?.contentOrNull ?: "")
-        return Playlist(
-            id = rec["id"]?.jsonPrimitive?.content ?: "",
-            name = rec["name"]?.jsonPrimitive?.content ?: name,
-            tracks = returnedTracks,
-            updatedAt = if (updatedMillis > 0) updatedMillis else System.currentTimeMillis()
-        )
-    }
-
-    suspend fun createPlaylist(name: String): Playlist = createPlaylist(name, null)
-
-    override suspend fun deletePlaylist(id: String) {
-        val res = client.delete("$pbUrl/api/collections/playlists/records/$id") { applyAuth() }
-        checkResponse(res)
-    }
-
-    override suspend fun updatePlaylistTracks(id: String, tracks: List<Track>) {
-        if (token == null || token == "guest") return
-        val res = client.patch("$pbUrl/api/collections/playlists/records/$id") {
-            applyAuth()
-            contentType(ContentType.Application.Json)
-            setBody(buildJsonObject {
-                put("tracks", json.encodeToJsonElement(ListSerializer(Track.serializer()), tracks))
-            })
-        }
-        checkResponse(res)
-    }
-
     suspend fun credits(track: Track): TrackCredits {
         val cleanTitle = cleanForLyricsSearch(track.displayTitle)
         val cleanArtist = track.artist.split(",", "&", "feat.", "ft.").firstOrNull()?.trim() ?: track.artist
@@ -1313,17 +848,6 @@ class BlexsyApiClient(
             d["language"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let { lang ->
                 roles.add(CreditRole(title = "Language", people = listOf(CreditPerson(name = lang.uppercase()))))
             }
-            d["sync"]?.jsonPrimitive?.contentOrNull?.let { sync ->
-                val timing = when (sync) {
-                    "word" -> "Word by word"
-                    "line" -> "Line by line"
-                    else -> "Not synced"
-                }
-                roles.add(CreditRole(title = "Timing", people = listOf(CreditPerson(name = timing))))
-            }
-            d["isrc"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let { isrc ->
-                roles.add(CreditRole(title = "ISRC", people = listOf(CreditPerson(name = isrc))))
-            }
 
             TrackCredits(
                 trackId = trackId,
@@ -1336,19 +860,4 @@ class BlexsyApiClient(
         }
     }
 
-    /**
-     * Radio untuk sebuah seed secara client-side via InnerTubeService.
-     */
-    suspend fun radio(
-        track: Track,
-        limit: Int = 10,
-        excludeIds: Collection<String> = emptyList()
-    ): List<Track> {
-        val ytid = track.youtubeId?.takeIf { it.isNotBlank() } ?: run {
-            InnerTubeService.searchTracks("${track.displayTitle} ${track.artist}", limit = 1).firstOrNull()?.youtubeId
-        } ?: return emptyList()
-        val (tracks, _) = InnerTubeService.getRadioTracks(ytid)
-        val excludeSet = excludeIds.toSet()
-        return tracks.filterNot { it.id in excludeSet }.take(limit)
-    }
 }

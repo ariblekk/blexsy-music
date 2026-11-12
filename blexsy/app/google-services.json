@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "782335252861",
+    "project_id": "blexsy-e401d",
+    "storage_bucket": "blexsy-e401d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:782335252861:android:b6113b7e43bb5b88301414",
+        "android_client_info": {
+          "package_name": "com.blek.blexsy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvXaQRzKOHpCH1zg8CRDryJflSXlh8FrI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

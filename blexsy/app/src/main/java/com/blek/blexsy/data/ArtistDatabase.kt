@@ -15,7 +15,7 @@ import kotlinx.serialization.json.Json
 class ArtistDatabase(
     context: Context?,
     name: String = "blexsy_artists.db"
-) : SQLiteOpenHelper(context, name, null, 1) {
+) : SQLiteOpenHelper(context, name, null, DB_VERSION) {
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -58,11 +58,12 @@ class ArtistDatabase(
     }
 
     suspend fun put(artist: ArtistDetail) = withContext(Dispatchers.IO) {
-        if (artist.id.isBlank() && artist.name.isBlank()) return@withContext
+        // Only cache entries that came from YouTube Music; anything else would resurface stale ids.
+        if (!artist.id.startsWith("UC") && !artist.id.startsWith("FEmusic_artist")) return@withContext
         runCatching {
             val db = writableDatabase ?: return@withContext
             val values = ContentValues().apply {
-                put("id", artist.id.ifBlank { artist.name })
+                put("id", artist.id)
                 put("name", artist.name)
                 put("payload", json.encodeToString(ArtistDetail.serializer(), artist))
                 put("updated_at", System.currentTimeMillis())
@@ -90,6 +91,8 @@ class ArtistDatabase(
     }
 
     private companion object {
+        // Bumped to 2: version 1 cached Spotify-era entries whose ids no longer resolve.
+        const val DB_VERSION = 2
         // ponytail: bounded size prevents SQLite db from growing unbounded; raise when users request permanent offline artist library
         const val MAX_ENTRIES = 200
     }

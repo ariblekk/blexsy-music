@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.blek.blexsy.model.Genre
+import com.blek.blexsy.model.GenrePlaylist
 import com.blek.blexsy.model.Track
 
 /**
@@ -49,6 +50,8 @@ internal fun SearchPage(
     onPlay: (Track, List<Track>) -> Unit,
     onToggleFavorite: (Track) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onOpenAlbum: (String) -> Unit,
+    onOpenPlaylist: (GenrePlaylist) -> Unit,
     onTrackOptions: (Track, List<Track>) -> Unit,
     bottomBar: @Composable () -> Unit = {}
 ) {
@@ -110,15 +113,17 @@ internal fun SearchPage(
                 } else {
                     searchResultsSection(
                         query = state.query,
-                        results = state.results,
-                        artists = state.artists,
-                        isSearching = state.isSearching,
+                        uiState = state.uiState,
                         favorites = favorites,
                         activeTrack = activeTrack,
                         onPlay = onPlay,
                         onToggleFavorite = onToggleFavorite,
                         onOpenArtist = onOpenArtist,
-                        onTrackOptions = onTrackOptions
+                        onOpenAlbum = onOpenAlbum,
+                        onOpenPlaylist = onOpenPlaylist,
+                        onTrackOptions = onTrackOptions,
+                        onRetry = state::retry,
+                        onLoadMore = state::loadMore
                     )
                 }
 

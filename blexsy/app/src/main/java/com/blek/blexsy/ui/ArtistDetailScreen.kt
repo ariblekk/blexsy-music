@@ -98,11 +98,6 @@ fun ArtistDetailScreen(
         }
     }
 
-    LaunchedEffect(artist?.name) {
-        val name = artist?.name ?: return@LaunchedEffect
-        motionVideoUrl = com.blek.blexsy.data.ArtistCanvasService.getMotionVideoUrl(name)
-    }
-
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentBottomPadding = if (bottomNav != null) {
         bottomInset + (if (activeTrack != null) 160.dp else 90.dp)
