@@ -33,8 +33,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -76,7 +78,7 @@ fun BlexsyButton(
     isLoading: Boolean = false,
     leadingIcon: ImageVector? = null
 ) {
-    val poppins = LocalBlexsyFontFamily.current
+    val sansFont = LocalBlexsyFontFamily.current
 
     val containerColor = when (variant) {
         ButtonVariant.Primary -> BlexsyColors.Primary
@@ -131,7 +133,7 @@ fun BlexsyButton(
                 }
                 Text(
                     text = text,
-                    fontFamily = poppins,
+                    fontFamily = sansFont,
                     fontSize = size.fontSize.sp,
                     fontWeight = FontWeight.Bold,
                     color = contentColor
@@ -142,7 +144,7 @@ fun BlexsyButton(
 }
 
 // =========================================================================================
-// INPUT COMPONENT (shadcn-style Input with unified Poppins typography and Dark Surfaces)
+// INPUT COMPONENT (shadcn-style Input with unified Manrope typography and Dark Surfaces)
 // =========================================================================================
 
 enum class InputShape {
@@ -152,8 +154,8 @@ enum class InputShape {
 
 @Composable
 fun BlexsyInput(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "",
     label: String? = null,
@@ -168,7 +170,7 @@ fun BlexsyInput(
     trailingContent: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null
 ) {
-    val poppins = LocalBlexsyFontFamily.current
+    val sansFont = LocalBlexsyFontFamily.current
     val actualShape: Shape = if (shape == InputShape.Pill) CircleShape else RoundedCornerShape(14.dp)
     val textFieldModifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
 
@@ -176,7 +178,7 @@ fun BlexsyInput(
         if (!label.isNullOrBlank()) {
             Text(
                 text = label,
-                fontFamily = poppins,
+                fontFamily = sansFont,
                 color = Color(0xFF8C8C8C),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -190,7 +192,7 @@ fun BlexsyInput(
             enabled = enabled,
             singleLine = singleLine,
             textStyle = textStyle ?: TextStyle(
-                fontFamily = poppins,
+                fontFamily = sansFont,
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
@@ -222,10 +224,10 @@ fun BlexsyInput(
                             Spacer(modifier = Modifier.width(10.dp))
                         }
                         Box(modifier = Modifier.weight(1f)) {
-                            if (value.isEmpty() && placeholder.isNotEmpty()) {
+                            if (value.text.isEmpty() && placeholder.isNotEmpty()) {
                                 Text(
                                     text = placeholder,
-                                    fontFamily = poppins,
+                                    fontFamily = sansFont,
                                     color = Color(0xFF666666),
                                     fontSize = textStyle?.fontSize ?: 16.sp,
                                     fontWeight = textStyle?.fontWeight ?: FontWeight.Normal
@@ -244,6 +246,49 @@ fun BlexsyInput(
     }
 }
 
+@Composable
+fun BlexsyInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    label: String? = null,
+    shape: InputShape = InputShape.Pill,
+    singleLine: Boolean = true,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    textStyle: TextStyle? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
+    focusRequester: FocusRequester? = null
+) {
+    var tfv by remember(value) {
+        mutableStateOf(TextFieldValue(text = value, selection = TextRange(value.length)))
+    }
+    BlexsyInput(
+        value = tfv,
+        onValueChange = {
+            tfv = it
+            onValueChange(it.text)
+        },
+        modifier = modifier,
+        placeholder = placeholder,
+        label = label,
+        shape = shape,
+        singleLine = singleLine,
+        enabled = enabled,
+        isError = isError,
+        textStyle = textStyle,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        leadingIcon = leadingIcon,
+        trailingContent = trailingContent,
+        focusRequester = focusRequester
+    )
+}
+
 // =========================================================================================
 // CHIP & BADGE COMPONENT (For filter pills, suggestions, and tags)
 // =========================================================================================
@@ -257,7 +302,7 @@ fun BlexsyChip(
     icon: ImageVector? = null,
     active: Boolean = false
 ) {
-    val poppins = LocalBlexsyFontFamily.current
+    val sansFont = LocalBlexsyFontFamily.current
 
     val bg = if (active) BlexsyColors.Primary else Color(0xFF242426)
     val textCol = if (active) Color.Black else BlexsyColors.Primary
@@ -287,14 +332,14 @@ fun BlexsyChip(
         if (!leadingText.isNullOrBlank()) {
             Text(
                 text = leadingText,
-                fontFamily = poppins,
+                fontFamily = sansFont,
                 color = labelCol,
                 fontSize = 12.sp
             )
         }
         Text(
             text = text,
-            fontFamily = poppins,
+            fontFamily = sansFont,
             color = textCol,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
@@ -333,7 +378,7 @@ fun <T> BlexsyTabs(
     fillMaxWidth: Boolean = false
 ) {
     if (items.isEmpty()) return
-    val poppins = LocalBlexsyFontFamily.current
+    val sansFont = LocalBlexsyFontFamily.current
     val density = LocalDensity.current
     val selectedIndex = items.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     val currentSelectedIndex by rememberUpdatedState(selectedIndex)
@@ -456,7 +501,7 @@ fun <T> BlexsyTabs(
                     ) {
                         Text(
                             text = label,
-                            fontFamily = poppins,
+                            fontFamily = sansFont,
                             color = animatedTextColor,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,

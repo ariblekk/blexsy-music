@@ -39,10 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeDown
-import androidx.compose.material.icons.automirrored.rounded.VolumeMute
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 /**
  * Spotify-styled volume seekbar connected to the system AudioManager stream.
  */
@@ -97,7 +93,7 @@ fun VolumeSlider(
             }
         ) {
             Icon(
-                imageVector = if (currentVolume == 0) Icons.AutoMirrored.Rounded.VolumeMute else Icons.AutoMirrored.Rounded.VolumeDown,
+                imageVector = if (currentVolume == 0) IcSpeakerSlash else IcSpeakerLow,
                 contentDescription = stringResource(R.string.a11y_volume_down),
                 tint = BlexsyColors.TextSecondary,
                 modifier = Modifier.size(22.dp)
@@ -192,7 +188,7 @@ fun VolumeSlider(
             }
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                imageVector = IcSpeakerHigh,
                 contentDescription = stringResource(R.string.a11y_volume_up),
                 tint = BlexsyColors.TextSecondary,
                 modifier = Modifier.size(22.dp)

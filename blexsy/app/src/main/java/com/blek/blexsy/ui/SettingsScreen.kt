@@ -12,20 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.HighQuality
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -102,7 +88,7 @@ fun SettingsScreen(
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Info,
+                            imageVector = IcInfo,
                             contentDescription = stringResource(R.string.settings_about_desc),
                             tint = BlexsyColors.TextPrimary,
                             modifier = Modifier.size(22.dp)
@@ -130,7 +116,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_bitrate_title),
                         subtitle = qualityLabel,
-                        icon = Icons.Rounded.HighQuality,
+                        icon = IcHighDefinition,
                         onClick = { showQualityDialog = true }
                     )
                     HorizontalDivider(
@@ -143,7 +129,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_equalizer_title),
                         subtitle = if (eqState.enabled) stringResource(R.string.settings_equalizer_tuned, eqPresetName) else stringResource(R.string.settings_equalizer_flat),
-                        icon = Icons.Rounded.GraphicEq,
+                        icon = IcEqualizer,
                         onClick = onOpenEqualizer
                     )
                 }
@@ -155,7 +141,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_app_tag_title),
                         subtitle = BlexsyThemeConfig.appName,
-                        icon = Icons.Rounded.Edit,
+                        icon = IcPencilSimple,
                         onClick = { showAppNameDialog = true }
                     )
                     HorizontalDivider(
@@ -166,7 +152,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_theme_shade_title),
                         subtitle = "${stringResource(BlexsyThemeConfig.themeMode.labelResId)} • ${stringResource(BlexsyThemeConfig.themeMode.descriptionResId)}",
-                        icon = Icons.Rounded.DarkMode,
+                        icon = IcMoon,
                         onClick = { showThemeModeDialog = true }
                     )
                     HorizontalDivider(
@@ -177,7 +163,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_accent_drip_title),
                         subtitle = stringResource(R.string.settings_accent_drip_desc),
-                        icon = Icons.Rounded.Palette,
+                        icon = IcPalette,
                         trailing = {
                             Box(
                                 modifier = Modifier
@@ -197,7 +183,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_language_title),
                         subtitle = stringResource(BlexsyThemeConfig.appLanguage.titleResId),
-                        icon = Icons.Rounded.Language,
+                        icon = IcGlobe,
                         onClick = { showLanguageDialog = true }
                     )
                 }
@@ -209,7 +195,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_cache_cap_title),
                         subtitle = stringResource(R.string.settings_cache_cap_desc, cacheLimitGb),
-                        icon = Icons.Rounded.Storage,
+                        icon = IcDatabase,
                         onClick = { showLimitDialog = true }
                     )
                     HorizontalDivider(
@@ -220,7 +206,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         title = stringResource(R.string.settings_flush_cache_title),
                         subtitle = stringResource(R.string.settings_flush_cache_holding, AudioCacheManager.formatBytes(cacheSizeBytes)),
-                        icon = Icons.Rounded.DeleteOutline,
+                        icon = IcTrashOutline,
                         tint = MaterialTheme.colorScheme.error,
                         onClick = { showClearCacheDialog = true }
                     )
@@ -701,7 +687,7 @@ fun SettingsScreen(
                                 ) {
                                     if (isSelected) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Check,
+                                            imageVector = IcCheck,
                                             contentDescription = stringResource(R.string.a11y_selected),
                                             tint = Color.Black,
                                             modifier = Modifier.size(22.dp)
@@ -860,7 +846,7 @@ fun SettingsScreen(
                                             }
                                             if (person.githubUrl.isNotBlank()) {
                                                 Icon(
-                                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                                                    imageVector = IcCaretRight,
                                                     contentDescription = stringResource(R.string.a11y_view_profile),
                                                     tint = BlexsyColors.TextTertiary,
                                                     modifier = Modifier.size(14.dp)
@@ -930,7 +916,7 @@ fun SettingsScreen(
                                             }
                                             if (credit.url.isNotBlank()) {
                                                 Icon(
-                                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                                                    imageVector = IcCaretRight,
                                                     contentDescription = stringResource(R.string.a11y_open_link),
                                                     tint = BlexsyColors.TextTertiary,
                                                     modifier = Modifier.size(14.dp)
@@ -967,14 +953,13 @@ fun SettingsScreen(
 }
 
 private val PRESET_COLORS = listOf(
-    Color(0xFF1DB954) to "Spotify Green",
+    Color(0xFFCCF05B) to "Blek Yellow",
     Color(0xFFA238FF) to "Deezer Purple",
     Color(0xFFFA243C) to "Apple Music Red",
     Color(0xFF00E5FF) to "Tidal Cyan",
     Color(0xFFFF0000) to "YouTube Music Red",
     Color(0xFF0038E2) to "Amazon Music Blue",
     Color(0xFFFF5500) to "SoundCloud Orange",
-    Color(0xFFCCF05B) to "Blek Yellow",
 )
 
 @Composable

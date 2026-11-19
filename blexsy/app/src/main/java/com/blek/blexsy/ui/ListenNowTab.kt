@@ -28,12 +28,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -61,8 +55,8 @@ import coil3.compose.AsyncImage
 import com.blek.blexsy.BuildConfig
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
-import com.blek.blexsy.model.AlbumSummary
 import com.blek.blexsy.model.ArtistSummary
+import com.blek.blexsy.model.ChartFeed
 import com.blek.blexsy.model.FeaturedItem
 import com.blek.blexsy.model.HomeSectionItem
 import com.blek.blexsy.model.Playlist
@@ -79,6 +73,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+
+/**
+ * Header line under a chart title: how many tracks are ranked and when Spotify last refreshed it.
+ * Null for the YouTube fallback chart, which carries neither, so the header stays a single line.
+ */
+internal fun ChartFeed.chartSubtitle(): String? {
+    if (tracks.isEmpty()) return null
+    val count = tracks.size
+    // `updated_at` is an ISO instant; the day is all a chart header needs.
+    val day = updatedAt?.take(10)?.takeIf { it.length == 10 }
+    return if (day != null) "$count lagu • diperbarui $day" else "$count lagu"
+}
 
 internal fun resolveHeroTracks(
     favorites: List<Track>,
@@ -115,14 +121,12 @@ internal fun ListenNowTab(
     topInset: androidx.compose.ui.unit.Dp = 0.dp,
     listState: LazyListState = rememberLazyListState(),
     chartTitle: String? = null,
+    chartFeed: ChartFeed? = null,
     tracks: List<Track>,
-    newReleases: List<AlbumSummary> = emptyList(),
     recentTracks: List<Track>,
     favorites: List<Track>,
-    popularArtists: List<ArtistSummary> = emptyList(),
     favoriteArtists: List<ArtistSummary> = emptyList(),
     collectionPlaylists: List<Playlist> = emptyList(),
-    featuredItem: FeaturedItem? = null,
     dynamicSections: List<HomeSectionItem> = emptyList(),
     playCounts: Map<String, Int> = emptyMap(),
     activeTrack: Track?,
@@ -131,16 +135,12 @@ internal fun ListenNowTab(
     isLoading: Boolean,
     onPlayChart: (Track, List<Track>) -> Unit,
     onSeeAllChart: () -> Unit,
-    onOpenAlbum: (String) -> Unit = {},
-    onPlayAlbum: ((AlbumSummary) -> Unit)? = null,
-    onSeeAllNewReleases: (() -> Unit)? = null,
     onPlayRecent: (List<Track>) -> Unit,
     onSeeAllLiked: () -> Unit,
     onToggleFavorite: (Track) -> Unit,
     onOpenArtist: (String) -> Unit,
     onOpenPlaylist: (Playlist) -> Unit = {},
     onSeeAllPlaylists: (() -> Unit)? = null,
-    onFeaturedClick: ((FeaturedItem) -> Unit)? = null,
     onTrackOptions: (Track, List<Track>) -> Unit,
     onTogglePlayPause: (() -> Unit)? = null
 ) {
@@ -186,225 +186,26 @@ internal fun ListenNowTab(
             item { HomeFeedSkeleton() }
         }
 
-        if (dynamicSections.isNotEmpty()) {
-            // Render server-driven sections based on PocketBase home_sections order
-            for (sec in dynamicSections) {
-                when (sec.variant.lowercase()) {
-                    "featured", "banner" -> {
-                        val item = sec.featuredItem ?: featuredItem
-                        if (item != null && item.title.isNotBlank()) {
-                            item { Spacer(modifier = Modifier.height(10.dp)) }
-                            item {
-                                FeaturedCustomHero(
-                                    item = item,
-                                    onClick = { onFeaturedClick?.invoke(item) }
-                                )
-                            }
-                        }
-                    }
-                    "artists" -> {
-                        val artists = sec.artists.ifEmpty { popularArtists }
-                        if (artists.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    kicker = stringResource(R.string.listen_popular_artists_kicker),
-                                    title = sec.title.ifBlank { stringResource(R.string.listen_popular_artists_title) }
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    items(artists) { artist ->
-                                        ArtistCircleCard(
-                                            artist = artist,
-                                            onClick = { artist.channelId?.let(onOpenArtist) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "albums" -> {
-                        if (sec.albums.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    kicker = "ALBUM",
-                                    title = sec.title.ifBlank { "Album & single" }
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    items(sec.albums) { album ->
-                                        AlbumCard(
-                                            album = album,
-                                            onClick = { onOpenAlbum(album.id) },
-                                            onPlay = onPlayAlbum?.let { play -> { play(album) } }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "playlists" -> {
-                        if (sec.playlists.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    kicker = "PLAYLIST",
-                                    title = sec.title.ifBlank { "Playlist" }
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    items(sec.playlists) { playlist ->
-                                        PlaylistCard(
-                                            playlist = playlist,
-                                            image = playlist.tracks.firstOrNull()?.image,
-                                            onClick = { onOpenPlaylist(playlist) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "chart" -> {
-                        val secTracks = sec.tracks.ifEmpty { tracks }
-                        if (secTracks.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    kicker = stringResource(R.string.listen_charts_kicker),
-                                    title = sec.title.ifBlank { chartTitle?.ifBlank { null } ?: stringResource(R.string.listen_charts_title) },
-                                    action = stringResource(R.string.listen_action_see_all),
-                                    onAction = onSeeAllChart
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    itemsIndexed(secTracks.take(10)) { index, track ->
-                                        TrackCard(
-                                            track = track,
-                                            rank = index + 1,
-                                            isPlayingThis = activeTrack?.id == track.id,
-                                            onClick = { onPlayChart(track, secTracks) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Baru Saja Di Dengar
-            if (recentTracks.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        kicker = stringResource(R.string.listen_repeat_kicker),
-                        title = stringResource(R.string.listen_repeat_title),
-                        action = stringResource(R.string.listen_action_run_it_back),
-                        onAction = { onPlayRecent(recentTracks) }
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(recentTracks) { track ->
-                            TrackCard(
-                                track = track,
-                                isPlayingThis = activeTrack?.id == track.id,
-                                onClick = { onPlayChart(track, recentTracks) }
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            // Legacy layout fallback
-            // 2. Feature Card (Custom dari PocketBase, disembunyikan jika tidak ada data)
-            if (featuredItem != null && featuredItem.title.isNotBlank()) {
-                item { Spacer(modifier = Modifier.height(10.dp)) }
-                item {
-                    FeaturedCustomHero(
-                        item = featuredItem,
-                        onClick = { onFeaturedClick?.invoke(featuredItem) }
-                    )
-                }
-            }
-
-            // 3. Baru Saja Di Dengar
-            if (recentTracks.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        kicker = stringResource(R.string.listen_repeat_kicker),
-                        title = stringResource(R.string.listen_repeat_title),
-                        action = stringResource(R.string.listen_action_run_it_back),
-                        onAction = { onPlayRecent(recentTracks) }
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(recentTracks) { track ->
-                            TrackCard(
-                                track = track,
-                                isPlayingThis = activeTrack?.id == track.id,
-                                onClick = { onPlayChart(track, recentTracks) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 4. Artist Popular
-            if (popularArtists.isNotEmpty()) {
+        // Server-driven recommendation shelves (e.g. YouTube "Pilihan cepat").
+        for (sec in dynamicSections) {
+            val secTracks = sec.tracks
+            if (secTracks.isNotEmpty()) {
                 item {
                     SectionHeader(
                         kicker = stringResource(R.string.listen_popular_artists_kicker),
-                        title = stringResource(R.string.listen_popular_artists_title)
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(popularArtists) { artist ->
-                            ArtistCircleCard(
-                                artist = artist,
-                                onClick = { artist.channelId?.let(onOpenArtist) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 6. Chart
-            if (tracks.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        kicker = stringResource(R.string.listen_charts_kicker),
-                        title = chartTitle?.ifBlank { null } ?: stringResource(R.string.listen_charts_title),
-                        action = stringResource(R.string.listen_action_see_all),
-                        onAction = onSeeAllChart
+                        title = sec.title
                     )
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        itemsIndexed(tracks.take(10)) { index, track ->
+                        items(secTracks.take(10)) { track ->
                             TrackCard(
                                 track = track,
-                                rank = index + 1,
+                                showRank = false,
                                 isPlayingThis = activeTrack?.id == track.id,
-                                onClick = { onPlayChart(track, tracks) }
+                                onClick = { onPlayChart(track, secTracks) }
                             )
                         }
                     }
@@ -412,9 +213,112 @@ internal fun ListenNowTab(
             }
         }
 
-        // 5. Artist Favorite
-        if (favoriteArtists.isNotEmpty()) {
+        // Baru Saja Di Dengar — rendered once, whether or not the server sent shelves.
+        if (recentTracks.isNotEmpty()) {
             item {
+                SectionHeader(
+                    kicker = stringResource(R.string.listen_repeat_kicker),
+                    title = stringResource(R.string.listen_repeat_title),
+                    action = stringResource(R.string.listen_action_run_it_back),
+                    onAction = { onPlayRecent(recentTracks) }
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(recentTracks) { track ->
+                        TrackCard(
+                            track = track,
+                            isPlayingThis = activeTrack?.id == track.id,
+                            onClick = { onPlayChart(track, recentTracks) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Chart. The rows come from Spotify and do not depend on the YouTube home feed, so this
+        // shelf is rendered whenever a chart exists — it used to live in the `else` branch above
+        // and vanished entirely when the home feed came back empty.
+        if (tracks.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    kicker = stringResource(R.string.listen_charts_kicker),
+                    title = chartTitle?.ifBlank { null } ?: stringResource(R.string.listen_charts_title),
+                    subtitle = chartFeed?.chartSubtitle(),
+                    action = stringResource(R.string.listen_action_see_all),
+                    onAction = onSeeAllChart
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    itemsIndexed(tracks.take(10)) { index, track ->
+                        TrackCard(
+                            track = track,
+                            // Spotify rows already carry their real position; the index is
+                            // only a fallback for a YouTube chart that has none.
+                            rank = track.rank ?: (index + 1),
+                            isPlayingThis = activeTrack?.id == track.id,
+                            onClick = { onPlayChart(track, tracks) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 7. Trending songs: charting but not yet ranked — no position badge.
+        val trendingSongs = chartFeed?.trending.orEmpty().take(10)
+        if (trendingSongs.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    kicker = stringResource(R.string.listen_trending_kicker),
+                    title = stringResource(R.string.listen_trending_title)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(trendingSongs) { track ->
+                        TrackCard(
+                            track = track,
+                            showRank = false,
+                            isPlayingThis = activeTrack?.id == track.id,
+                            onClick = { onPlayChart(track, trendingSongs) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 8. Trending artists in the market.
+        val trendingArtists = chartFeed?.popularArtists.orEmpty().take(10)
+        if (trendingArtists.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    kicker = stringResource(R.string.listen_trending_artists_kicker),
+                    title = stringResource(R.string.listen_trending_artists_title)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(trendingArtists, key = { "trending-artist:${it.id}" }) { artist ->
+                        ArtistCircleCard(
+                            artist = artist,
+                            onClick = { artist.channelId?.let(onOpenArtist) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 5. Artist Favorite
+        if (favoriteArtists.isNotEmpty()) {            item {
                 SectionHeader(
                     kicker = stringResource(R.string.listen_favorite_artists_kicker),
                     title = stringResource(R.string.listen_favorite_artists_title)
@@ -587,7 +491,7 @@ internal fun ArtistStyleHeroCarousel(
                     ) {
                         if (isPlayingThis) {
                             Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
+                                imageVector = IcPlay,
                                 contentDescription = stringResource(R.string.a11y_playing),
                                 tint = BlexsyColors.Primary,
                                 modifier = Modifier.size(13.dp)
@@ -611,7 +515,7 @@ internal fun ArtistStyleHeroCarousel(
                     Text(
                         text = track.displayTitle,
                         style = BlexsyTypography.Display.copy(
-                            fontFamily = DeezerBoldFont,
+                            fontFamily = HeadingFont,
                             fontSize = 24.sp,
                             lineHeight = 28.sp,
                             fontWeight = FontWeight.Bold,
@@ -746,7 +650,7 @@ private fun FeaturedCardLayout(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MoreVert,
+                        imageVector = IcDotsThreeVertical,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
@@ -906,7 +810,7 @@ internal fun PlaylistCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Favorite,
+                        imageVector = IcHeartFilled,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(40.dp)

@@ -37,11 +37,11 @@ data class ArtistSummary(
     val subscribers: String? = null
 ) {
     /**
-     * A YouTube Music channel id, or null when this summary only carries a display name.
-     * Artist pages can only be opened with a real channel id.
+     * A YouTube Music channel id or a Spotify artist id, or null when this summary only carries
+     * a display name. Artist pages can only be opened with a real catalog id.
      */
     val channelId: String?
-        get() = id.takeIf { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
+        get() = id.takeIf { it.isCatalogArtistId() }
 }
 
 @Serializable
@@ -59,13 +59,6 @@ data class ArtistDetail(
     val similarArtists: List<ArtistSummary> = emptyList(),
     val verified: Boolean = false,
     val subscribers: String? = null
-)
-
-@Serializable
-data class Genre(
-    val id: String = "",
-    val name: String = "Genre",
-    val image: String? = null
 )
 
 @Serializable

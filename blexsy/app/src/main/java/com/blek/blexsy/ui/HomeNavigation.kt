@@ -37,7 +37,6 @@ import coil3.compose.AsyncImage
 import com.blek.blexsy.BuildConfig
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
-import com.blek.blexsy.model.Genre
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
 import com.blek.blexsy.model.toHighResArtwork
@@ -58,8 +57,12 @@ sealed class BlexsyScreen {
     object Login : BlexsyScreen()
     data class Artist(val id: String) : BlexsyScreen()
     data class Album(val id: String) : BlexsyScreen()
-    data class GenreDetail(val id: String, val name: String, val image: String? = null) : BlexsyScreen()
     data class PlaylistDetail(val playlist: Playlist, val isUserCreated: Boolean = false) : BlexsyScreen()
+    data class Genre(
+        val id: String,
+        val title: String = "",
+        val imageUrl: String? = null
+    ) : BlexsyScreen()
     object Settings : BlexsyScreen()
     object Equalizer : BlexsyScreen()
 }

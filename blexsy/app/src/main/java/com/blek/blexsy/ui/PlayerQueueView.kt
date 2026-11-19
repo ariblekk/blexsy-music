@@ -53,9 +53,6 @@ import com.blek.blexsy.model.QueueTier
 import com.blek.blexsy.model.Track
 import com.blek.blexsy.player.BlexsyAudioPlayer
 import com.blek.blexsy.player.QueueSource
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Menu
 
 /**
  * Up-next panel: reorderable queue rows with the "next from" context separator,
@@ -290,7 +287,7 @@ internal fun PlayerQueueView(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Close,
+                                imageVector = IcClose,
                                 contentDescription = stringResource(R.string.queue_remove_content_desc),
                                 tint = BlexsyColors.TextMuted,
                                 modifier = Modifier.size(18.dp)
@@ -364,7 +361,7 @@ internal fun PlayerQueueView(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Menu,
+                                imageVector = IcMenu,
                                 contentDescription = stringResource(R.string.a11y_reorder),
                                 tint = if (isBeingDragged) BlexsyColors.Primary else BlexsyColors.TextMuted,
                                 modifier = Modifier.size(20.dp)

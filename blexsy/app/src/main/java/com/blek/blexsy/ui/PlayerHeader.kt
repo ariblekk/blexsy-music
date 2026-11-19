@@ -43,8 +43,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreHoriz
 
 /** Small all-caps label above the player panel ("Now playing", "Lyrics", "Queue"). */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -208,7 +206,7 @@ internal fun PlayerGlassTrackCard(
                     )
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreHoriz,
+                    imageVector = IcDotsThree,
                     contentDescription = stringResource(R.string.a11y_more_options),
                     tint = BlexsyColors.TextPrimary,
                     modifier = Modifier.size(22.dp)

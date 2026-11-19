@@ -10,6 +10,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
@@ -32,20 +33,22 @@ import kotlinx.serialization.json.put
 class ApiException(message: String, val statusCode: Int? = null) : Exception(message)
 
 private const val TTL_CHART_MS = 24 * 60 * 60_000L // 1 day
+/** Spotify refreshes country charts a few times a day and serves them with a 15-minute max-age. */
+private const val TTL_SPOTIFY_CHART_MS = 60 * 60_000L // 1 hour
+/** Market slug the charts endpoint accepts: `id` for Indonesia, `global` for the world chart. */
+private const val CHART_COUNTRY = "id"
 private const val TTL_HOME_SECTIONS_MS = 3 * 60 * 60_000L // 3 hours: keep the feed from feeling frozen
 private const val HOME_SECTIONS_KEY = "home_sections:active"
-private const val TTL_NEW_RELEASES_MS = 24 * 60 * 60_000L // 1 day
-private const val TTL_GENRES_MS = 7 * 24 * 60 * 60_000L
-private const val GENRES_KEY = "genres:all"
 private const val TTL_RECENT_MS = 60_000L
 private const val TTL_CREDITS_MS = 7 * 24 * 60 * 60_000L
+private const val TTL_SUGGEST_MS = 24 * 60 * 60_000L
 private const val TTL_LYRICS_MS = 14 * 24 * 60 * 60_000L
 private val RECENT_SNAPSHOT_LIMITS = listOf(10, 20, 50)
+private const val SEARCH_ARTIST_LIMIT = 1
 
 data class SearchResult(
     val tracks: List<Track>,
     val artists: List<ArtistSummary> = emptyList(),
-    val albums: List<AlbumSummary> = emptyList(),
     val playlists: List<GenrePlaylist> = emptyList(),
     /** Opaque token for the next page; null when the result set is exhausted. */
     val continuation: String? = null,
@@ -57,13 +60,34 @@ data class SearchResult(
 )
 
 /**
- * Catalog facade over [InnerTubeService]. Everything here — home, charts, new releases,
- * search, albums, artists, playlists, genres — comes from YouTube Music. Lyrics and credits
+ * Artists credited by the returned tracks, in result order. Searching a song title surfaces the
+ * performer — not every artist whose name happens to contain the query. Ids that cannot open an
+ * artist page are dropped, and [artistResults] only supplies the avatar.
+ */
+internal fun creditedArtists(
+    tracks: List<SpotifyTrack>,
+    artistResults: List<SpotifyArtist> = emptyList()
+): List<ArtistSummary> {
+    val images = artistResults.associate { it.id to it.image }
+    return tracks
+        .flatMap { track ->
+            track.artists.mapIndexed { index, name ->
+                val id = track.artistIds.getOrNull(index).orEmpty()
+                ArtistSummary(id = id, name = name, image = images[id])
+            }
+        }
+        .filter { it.id.isCatalogArtistId() }
+        .distinctBy { it.id }
+}
+
+/**
+ * Catalog facade. Spotify ([SpotifyMetadata]) is the only metadata source: search, albums,
+ * artists and playlists all resolve there, and nothing falls back to YouTube data. YouTube is
+ * used for audio alone — [InnerTubeService.resolveStreamUrl] at play time. Lyrics and credits
  * still fan out to their own providers at the bottom of the file.
  */
 class BlexsyApiClient(
-    private val cache: ApiCache? = null,
-    val artistDb: ArtistDatabase? = null
+    private val cache: ApiCache? = null
 ) {
     val json = Json {
         ignoreUnknownKeys = true
@@ -118,9 +142,7 @@ class BlexsyApiClient(
         cache?.let { c ->
             c.evict(HOME_SECTIONS_KEY)
             c.evict(chartKey(50))
-            c.evict("new_releases:yt:30")
-            c.evict(GENRES_KEY)
-            c.evict(popularArtistsKey(20))
+            c.evict(spotifyChartKey(CHART_COUNTRY, 50))
         }
     }
 
@@ -130,29 +152,20 @@ class BlexsyApiClient(
             runCatching { json.decodeFromString<List<HomeSection>>(entry.body) }.getOrNull()
         }
 
-    suspend fun chartSnapshot(limit: Int = 50): ChartFeed? =
-        cache?.read(chartKey(limit))?.let { entry ->
-            runCatching { json.decodeFromString<ChartFeed>(entry.body) }.getOrNull()
+    /** Last chart written to disk — Spotify first so a cold start paints the ranked one. */
+    suspend fun chartSnapshot(limit: Int = 50, country: String = CHART_COUNTRY): ChartFeed? {
+        val keys = listOf(spotifyChartKey(country, limit), chartKey(limit))
+        return keys.firstNotNullOfOrNull { key ->
+            cache?.read(key)?.let { entry ->
+                runCatching { json.decodeFromString<ChartFeed>(entry.body) }.getOrNull()
+                    ?.takeIf { it.tracks.isNotEmpty() }
+            }
         }
-
-    suspend fun topArtistsSnapshot(limit: Int = 20): List<ArtistSummary>? =
-        cache?.read(popularArtistsKey(limit))?.let { entry ->
-            runCatching { json.decodeFromString<List<ArtistSummary>>(entry.body) }.getOrNull()
-        }
-
-    suspend fun newReleasesSnapshot(limit: Int = 30): List<AlbumSummary>? =
-        cache?.read("new_releases:yt:$limit")?.let { entry ->
-            runCatching { json.decodeFromString<List<AlbumSummary>>(entry.body) }.getOrNull()
-        }
-
-    suspend fun genresSnapshot(): List<Genre>? =
-        cache?.read(GENRES_KEY)?.let { entry ->
-            runCatching { json.decodeFromString<List<Genre>>(entry.body) }.getOrNull()
-        }
+    }
 
     private fun chartKey(limit: Int) = "chart_yt:$limit"
 
-    private fun popularArtistsKey(limit: Int) = "popular_artists_yt:$limit"
+    private fun spotifyChartKey(country: String, limit: Int) = "chart_sp:$country:$limit"
 
     /** Reads a cache entry only while it is younger than [ttlMs]; stale entries are ignored. */
     private suspend inline fun <reified T> freshCache(key: String, ttlMs: Long, refresh: Boolean): T? {
@@ -165,7 +178,17 @@ class BlexsyApiClient(
         return runCatching { json.decodeFromString<T>(entry.body) }.getOrNull()
     }
 
-    suspend fun chart(limit: Int = 50, refresh: Boolean = false): ChartFeed {
+    /**
+     * Market chart: Spotify ranks first (real positions, play counts and week-on-week movement),
+     * YouTube Music charts are the fallback. The endpoint is unofficial, so a failure here is
+     * expected rather than exceptional — either way the home feed must still get a chart.
+     */
+    suspend fun chart(
+        limit: Int = 50,
+        refresh: Boolean = false,
+        country: String = CHART_COUNTRY
+    ): ChartFeed {
+        spotifyChart(limit, refresh, country)?.let { if (it.tracks.isNotEmpty()) return it }
         val key = chartKey(limit)
         freshCache<ChartFeed>(key, TTL_CHART_MS, refresh)?.let { if (it.tracks.isNotEmpty()) return it }
         val feeds = runCatching { InnerTubeService.getCharts(limit) }.getOrDefault(emptyList())
@@ -174,90 +197,116 @@ class BlexsyApiClient(
         return feed
     }
 
+    /** The market chart without the YouTube fallback; null when Spotify had nothing to rank. */
+    suspend fun spotifyChartFeed(
+        limit: Int = 50,
+        refresh: Boolean = false,
+        country: String = CHART_COUNTRY
+    ): ChartFeed? = spotifyChart(limit, refresh, country)?.takeIf { it.tracks.isNotEmpty() }
+
+    /** Cached Spotify chart, or null when the endpoint failed to return a ranked chart. */
+    private suspend fun spotifyChart(limit: Int, refresh: Boolean, country: String): ChartFeed? {
+        val key = spotifyChartKey(country, limit)
+        freshCache<ChartFeed>(key, TTL_SPOTIFY_CHART_MS, refresh)?.let { return it }
+        val feed = runCatching { SpotifyMetadata.getCharts(country, top = "daily") }
+            .getOrNull()
+            ?.toChartFeed()
+            ?: return null
+        // An empty chart is not worth remembering.
+        if (feed.tracks.isNotEmpty()) cache?.write(key, json.encodeToString(feed))
+        return feed
+    }
+
+    /**
+     * Spotify search only. YouTube supplies audio at play time (via the title/artist fallback in
+     * [InnerTubeService.resolveTrackStream]), never metadata, so nothing here is merged.
+     * [continuation] is the next Spotify offset.
+     */
     suspend fun search(query: String, continuation: String? = null, limit: Int = 20): SearchResult {
-        return try {
-            val page = InnerTubeService.search(query, continuation = continuation, limit = limit)
-            SearchResult(
-                tracks = page.tracks,
-                artists = page.artists,
-                albums = page.albums,
-                playlists = page.playlists,
-                continuation = page.continuation
-            )
+        val pageSize = limit.coerceIn(1, 50)
+        val offset = continuation?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val page = try {
+            SpotifyMetadata.search(query, limit = pageSize, offset = offset)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
-            SearchResult(emptyList(), failed = true)
+            return SearchResult(emptyList(), failed = true)
         }
+        val tracks = page.tracks.map { it.toTrack() }
+
+        // Performers first: a song-title query must show who plays the song, not whoever's name
+        // contains the words. Name-matched Spotify artists are only the fallback for a query that
+        // returned no tracks at all.
+        val performers = creditedArtists(page.tracks, page.artists)
+        val matchedByName = page.artists
+            .filter { queryMatchesName(query, it.name) }
+            .map { it.toArtistSummary() }
+
+        return SearchResult(
+            tracks = tracks,
+            artists = (performers.ifEmpty { matchedByName }).take(SEARCH_ARTIST_LIMIT),
+            // Album and playlist shelves are left out: search shows artists and songs only.
+            playlists = emptyList(),
+            continuation = if (tracks.isEmpty()) null else (offset + pageSize).toString()
+        )
     }
 
-    suspend fun newReleases(limit: Int = 30, refresh: Boolean = false): List<AlbumSummary> {
-        val key = "new_releases:yt:$limit"
-        freshCache<List<AlbumSummary>>(key, TTL_NEW_RELEASES_MS, refresh)?.let { if (it.isNotEmpty()) return it }
-        val albums = runCatching { InnerTubeService.getNewReleases(limit) }.getOrDefault(emptyList())
-        if (albums.isNotEmpty()) cache?.write(key, json.encodeToString(albums))
-        return albums
-    }
+    /** Spotify only — a non-Spotify id has no detail page to show. */
+    suspend fun album(id: String): AlbumDetail =
+        SpotifyMetadata.getAlbum(id).toAlbumDetail()
 
-    suspend fun album(id: String): AlbumDetail {
-        return InnerTubeService.getAlbum(id) ?: throw ApiException("Album not found")
-    }
-
+    /** YouTube home feed, narrowed to playable songs: album/artist/playlist cards would need a YouTube detail page. */
     suspend fun homeSections(refresh: Boolean = false): List<HomeSection> {
         val key = HOME_SECTIONS_KEY
-        freshCache<List<HomeSection>>(key, TTL_HOME_SECTIONS_MS, refresh)?.let { if (it.isNotEmpty()) return it }
-        val sections = runCatching { InnerTubeService.getHome() }.getOrDefault(emptyList())
+        freshCache<List<HomeSection>>(key, TTL_HOME_SECTIONS_MS, refresh)?.let { return it }
+        val sections = runCatching { InnerTubeService.getHome() }
+            .getOrDefault(emptyList())
+            .filterNot { sec ->
+                val title = sec.title.lowercase()
+                title.contains("trending") || title.contains("tangga") || title.contains("chart")
+            }
+            .mapNotNull { section ->
+                val songs = section.items.mapNotNull { it.track }
+                if (songs.isEmpty()) {
+                    null
+                } else {
+                    section.copy(
+                        items = songs.map { track ->
+                            HomeSectionItem(
+                                type = "song",
+                                id = track.id,
+                                title = track.displayTitle,
+                                track = track
+                            )
+                        }
+                    )
+                }
+            }
         if (sections.isNotEmpty()) cache?.write(key, json.encodeToString(sections))
         return sections
     }
 
-    suspend fun topArtists(limit: Int = 30, refresh: Boolean = false): List<ArtistSummary> {
-        val key = popularArtistsKey(limit)
-        freshCache<List<ArtistSummary>>(key, TTL_CHART_MS, refresh)?.let { if (it.isNotEmpty()) return it }
-        val artists = runCatching { InnerTubeService.getTopArtists(limit) }.getOrDefault(emptyList())
-        if (artists.isNotEmpty()) cache?.write(key, json.encodeToString(artists))
-        return artists
+    /** Spotify only: a display name is resolved through Spotify search, never a YouTube channel. */
+    suspend fun resolveArtistId(name: String): String? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+        return runCatching {
+            SpotifyMetadata.search(trimmed, limit = 5).artists
+                .firstOrNull { queryMatchesName(trimmed, it.name) }
+                ?.id
+        }.getOrNull()
     }
 
-    suspend fun searchArtists(query: String, limit: Int = 10): List<ArtistSummary> =
-        runCatching { InnerTubeService.searchArtists(query, limit) }.getOrDefault(emptyList())
+    /** Spotify only — any other id has no artist page here. */
+    suspend fun artist(id: String): ArtistDetail =
+        SpotifyMetadata.getArtist(id).toArtistDetail()
 
-    /** YouTube Music artist ids are channel ids (`UC…`) or `FEmusic_artist…` browse ids. */
-    private fun isYouTubeArtistId(id: String): Boolean =
-        id.startsWith("UC") || id.startsWith("FEmusic_artist")
-
-    suspend fun cachedArtist(id: String): ArtistDetail? =
-        if (isYouTubeArtistId(id)) artistDb?.get(id) else null
-
-    suspend fun artist(id: String): ArtistDetail {
-        // Anything that is not a YouTube Music id is a leftover from the old Spotify catalog.
-        if (!isYouTubeArtistId(id)) {
-            throw ApiException("Artist not available for this id", 0)
-        }
-        val fetched = runCatching { InnerTubeService.getArtist(id) }.getOrNull()
-        if (fetched != null) {
-            artistDb?.put(fetched)
-            return fetched
-        }
-        return artistDb?.get(id) ?: throw ApiException("Failed to load artist", 0)
-    }
-
-    suspend fun genres(refresh: Boolean = false): List<Genre> {
-        val key = GENRES_KEY
-        if (refresh) cache?.evict(key)
-        val cached = if (!refresh) {
-            runCatching { cache?.read(key)?.let { json.decodeFromString<List<Genre>>(it.body) } }.getOrNull()
-        } else null
-        if (!cached.isNullOrEmpty() && !refresh) return cached
-        val genres = runCatching { InnerTubeService.getGenres() }.getOrDefault(emptyList())
-        if (genres.isNotEmpty()) cache?.write(key, json.encodeToString(genres))
-        return genres
-    }
-
-    suspend fun genrePlaylists(id: String): List<GenrePlaylist> {
-        return runCatching { InnerTubeService.getGenrePlaylists(id) }.getOrDefault(emptyList())
-    }
+    /** Browse category page: curated sections of playlists, albums, and sub-genres. */
+    suspend fun genrePage(id: String): SpotifyGenrePage = SpotifyMetadata.getGenre(id)
 
     suspend fun playlistDetail(id: String, fetchAll: Boolean = true): Pair<String, List<Track>> {
-        return runCatching { InnerTubeService.getPlaylist(id) }.getOrDefault("" to emptyList())
+        val detail = SpotifyMetadata.getPlaylist(id).toPlaylist()
+        return detail.name to detail.tracks
     }
 
     suspend fun playlist(id: String): List<Track> = playlistDetail(id).second
@@ -296,6 +345,14 @@ class BlexsyApiClient(
         val t1 = target.lowercase().split(',', '&', '/', ' ').map { it.trim() }.filter { it.length > 2 }
         val t2 = candidate.lowercase().split(',', '&', '/', ' ').map { it.trim() }.filter { it.length > 2 }
         return t1.any { it in t2 } || t2.any { it in t1 }
+    }
+
+    /** Loose "does this catalog name answer the query" test: normalized equality or containment. */
+    internal fun queryMatchesName(query: String, name: String): Boolean {
+        val q = cleanTitleForMatch(query)
+        val n = cleanTitleForMatch(name)
+        if (q.isEmpty() || n.isEmpty()) return false
+        return n == q || n.contains(q) || q.contains(n)
     }
 
     suspend fun lyrics(track: Track): LyricsResult {
@@ -788,13 +845,76 @@ class BlexsyApiClient(
         return body.dropLast(tailCut).joinToString("\n")
     }
 
-    suspend fun credits(track: Track): TrackCredits {
-        val cleanTitle = cleanForLyricsSearch(track.displayTitle)
-        val cleanArtist = track.artist.split(",", "&", "feat.", "ft.").firstOrNull()?.trim() ?: track.artist
-        return fetchCredits(track.id, cleanTitle, cleanArtist)
+    suspend fun searchSuggest(query: String): List<String> {
+        val q = query.trim()
+        if (q.length < 2) return emptyList()
+        val cacheKey = "suggest:${q.lowercase()}"
+        return runCatching {
+            val jsonText = cachedText(cacheKey, TTL_SUGGEST_MS) {
+                val list = SpotifyMetadata.searchSuggest(q)
+                if (list.isNotEmpty()) {
+                    json.encodeToString(list)
+                } else {
+                    throw ApiException("No suggestions")
+                }
+            }
+            json.decodeFromString<List<String>>(jsonText)
+        }.getOrElse {
+            runCatching { SpotifyMetadata.searchSuggest(q) }.getOrDefault(emptyList())
+        }
     }
 
-    suspend fun credits(trackId: String): TrackCredits = fetchCredits(trackId, "", "")
+    suspend fun credits(track: Track): TrackCredits {
+        val cacheKey = "credits:${track.id.ifBlank { "${track.artist}:${track.title}" }}"
+        return runCatching {
+            val jsonText = cachedText(cacheKey, TTL_CREDITS_MS) {
+                val res = resolveCredits(track)
+                if (res.roles.isNotEmpty()) {
+                    json.encodeToString(TrackCredits.serializer(), res)
+                } else {
+                    throw ApiException("No credits found")
+                }
+            }
+            json.decodeFromString(TrackCredits.serializer(), jsonText)
+        }.getOrElse { resolveCredits(track) }
+    }
+
+    suspend fun credits(trackId: String): TrackCredits {
+        if (trackId.isSpotifyCatalogId()) {
+            runCatching {
+                SpotifyMetadata.getCredits(trackId)
+            }.getOrNull()?.takeIf { it.roles.isNotEmpty() }?.let { return it }
+        }
+        return fetchCredits(trackId, "", "")
+    }
+
+    private suspend fun resolveCredits(track: Track): TrackCredits {
+        val cleanTitle = cleanForLyricsSearch(track.displayTitle)
+        val cleanArtist = track.artist.split(",", "&", "feat.", "ft.").firstOrNull()?.trim() ?: track.artist
+
+        // 1. Direct Spotify track credits if Spotify catalog id
+        if (track.id.isSpotifyCatalogId()) {
+            val spCredits = runCatching { SpotifyMetadata.getCredits(track.id) }.getOrNull()
+            if (spCredits != null && spCredits.roles.isNotEmpty()) {
+                return spCredits.copy(title = track.displayTitle.ifBlank { spCredits.title })
+            }
+        }
+
+        // 2. Resolve via Spotify search if YouTube id
+        val spSearchResults = runCatching {
+            SpotifyMetadata.search("$cleanTitle $cleanArtist", limit = 1)
+        }.getOrNull()
+        val spTrackId = spSearchResults?.tracks?.firstOrNull()?.id
+        if (!spTrackId.isNullOrBlank()) {
+            val spCredits = runCatching { SpotifyMetadata.getCredits(spTrackId) }.getOrNull()
+            if (spCredits != null && spCredits.roles.isNotEmpty()) {
+                return spCredits.copy(trackId = track.id, title = track.displayTitle.ifBlank { spCredits.title })
+            }
+        }
+
+        // 3. Fallback to third-party lrc.red / LRCLIB
+        return fetchCredits(track.id, cleanTitle, cleanArtist)
+    }
 
     private suspend fun fetchCredits(trackId: String, title: String, artist: String): TrackCredits {
         val query = "$title $artist".trim().ifBlank { trackId }

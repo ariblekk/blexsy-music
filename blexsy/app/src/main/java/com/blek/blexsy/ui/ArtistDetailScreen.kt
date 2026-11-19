@@ -9,11 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.blek.blexsy.data.BlexsyApiClient
+import com.blek.blexsy.model.AlbumSummary
 import com.blek.blexsy.model.ArtistDetail
 import com.blek.blexsy.model.Track
+import com.blek.blexsy.model.isCatalogArtistId
 import com.blek.blexsy.model.toHighResArtwork
 import com.blek.blexsy.player.BlexsyAudioPlayer
 
@@ -65,6 +62,7 @@ fun ArtistDetailScreen(
     var error by remember(artistId) { mutableStateOf<String?>(null) }
     var showAllTracks by remember(artistId) { mutableStateOf(false) }
     var catalogTabIndex by remember(artistId) { mutableIntStateOf(0) }
+    var pageTabIndex by remember(artistId) { mutableIntStateOf(0) }
     val activeTrack by player.currentTrack.collectAsState()
     val isPlaying by player.isPlaying.collectAsState()
     val listState = remember(artistId) { androidx.compose.foundation.lazy.LazyListState() }
@@ -79,16 +77,17 @@ fun ArtistDetailScreen(
     val defaultErrorMessage = stringResource(R.string.artist_error_failed)
 
     LaunchedEffect(artistId) {
-        val cached = api.cachedArtist(artistId)
-        if (cached != null) {
-            artist = cached
-            isLoading = false
-        } else {
-            isLoading = true
-        }
+        isLoading = true
         error = null
         try {
-            artist = api.artist(artistId)
+            // Opened immediately from any artist reference: a catalog id goes straight through,
+            // a display name is resolved here while the skeleton is already on screen.
+            val resolvedId = if (artistId.isCatalogArtistId()) artistId else api.resolveArtistId(artistId)
+            if (resolvedId == null) {
+                error = defaultErrorMessage
+            } else {
+                artist = api.artist(resolvedId)
+            }
         } catch (e: Exception) {
             if (artist == null) {
                 error = e.message ?: defaultErrorMessage
@@ -96,6 +95,11 @@ fun ArtistDetailScreen(
         } finally {
             isLoading = false
         }
+    }
+
+    LaunchedEffect(artist?.name) {
+        val name = artist?.name ?: return@LaunchedEffect
+        motionVideoUrl = com.blek.blexsy.data.ArtistCanvasService.getMotionVideoUrl(name)
     }
 
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -130,6 +134,14 @@ fun ArtistDetailScreen(
             val art = artist!!
             val displayedTracks = if (showAllTracks) art.topTracks else art.topTracks.take(5)
             val isPlayingArtist = isPlaying && art.topTracks.any { it.id == activeTrack?.id }
+
+            // Page-level filters: everything, singles & EPs, or albums only.
+            val pageTabs = buildList {
+                add(ArtistPageTab.All)
+                if (art.singlesAndEps.isNotEmpty()) add(ArtistPageTab.Singles)
+                if (art.albums.isNotEmpty()) add(ArtistPageTab.Albums)
+            }
+            val currentPageTab = pageTabs.getOrElse(pageTabIndex) { ArtistPageTab.All }
 
             LazyColumn(
                 state = listState,
@@ -209,7 +221,7 @@ fun ArtistDetailScreen(
                                 Text(
                                     text = art.name,
                                     style = BlexsyTypography.Display.copy(
-                                        fontFamily = DeezerBoldFont,
+                                        fontFamily = HeadingFont,
                                         fontSize = 30.sp,
                                         lineHeight = 36.sp,
                                         fontWeight = FontWeight.Bold,
@@ -224,7 +236,7 @@ fun ArtistDetailScreen(
                                 if (art.verified) {
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
-                                        imageVector = Icons.Rounded.Verified,
+                                        imageVector = IcSealCheck,
                                         contentDescription = stringResource(R.string.a11y_verified),
                                         tint = Color(0xFF3D91F4),
                                         modifier = Modifier.size(24.dp)
@@ -243,6 +255,7 @@ fun ArtistDetailScreen(
                                 Text(
                                     text = subText,
                                     style = BlexsyTypography.BodyMuted.copy(
+                                        fontFamily = MonoFont,
                                         color = Color.White.copy(alpha = 0.75f),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
@@ -262,7 +275,7 @@ fun ArtistDetailScreen(
                                             player.play(art.topTracks.first(), art.topTracks)
                                         }
                                     },
-                                    leadingIcon = if (isPlayingArtist) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    leadingIcon = if (isPlayingArtist) IcPause else IcPlay,
                                     variant = ButtonVariant.Primary,
                                     size = ButtonSize.Md,
                                     modifier = Modifier.widthIn(min = 160.dp, max = 220.dp)
@@ -274,103 +287,141 @@ fun ArtistDetailScreen(
 
                 item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                // Lagu Populer
-                if (art.topTracks.isNotEmpty()) {
+                // Page filter tabs: All / Singles & EPs / Albums
+                if (pageTabs.size > 1) {
                     item {
-                        SectionHeader(
-                            kicker = stringResource(R.string.artist_kicker_favorites),
-                            title = stringResource(R.string.artist_title_top_tracks),
-                            action = if (art.topTracks.size > 5) (if (showAllTracks) stringResource(R.string.action_less) else stringResource(R.string.action_see_all)) else null,
-                            onAction = { showAllTracks = !showAllTracks }
-                        )
-                    }
-
-                    itemsIndexed(displayedTracks) { index, track ->
-                        TrackTile(
-                            track = track,
-                            index = index,
-                            isPlayingThis = activeTrack?.id == track.id,
-                            onClick = { player.play(track, art.topTracks) },
-                            onMore = { onTrackOptions(track, art.topTracks) }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                        ) {
+                            BlexsyTabs(
+                                tabs = pageTabs.map { stringResource(it.labelRes) },
+                                selectedIndex = pageTabs.indexOf(currentPageTab),
+                                onSelect = { pageTabIndex = it },
+                                fillMaxWidth = true
+                            )
+                        }
                     }
                 }
 
-                // Diskografi / Releases (Separated by tabs)
                 val hasAlbums = art.albums.isNotEmpty()
                 val hasSingles = art.singlesAndEps.isNotEmpty()
 
-                if (hasAlbums || hasSingles) {
-                    item {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        SectionHeader(
-                            kicker = stringResource(R.string.artist_kicker_catalog),
-                            title = if (hasAlbums && hasSingles) stringResource(R.string.artist_title_releases) else if (hasAlbums) stringResource(R.string.artist_title_albums) else stringResource(R.string.artist_title_singles)
-                        )
-                    }
-
-                    if (hasAlbums && hasSingles) {
+                if (currentPageTab == ArtistPageTab.All) {
+                    // Lagu Populer
+                    if (art.topTracks.isNotEmpty()) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                BlexsyTabs(
-                                    tabs = listOf(stringResource(R.string.artist_tab_albums), stringResource(R.string.artist_tab_singles)),
-                                    selectedIndex = catalogTabIndex.coerceIn(0, 1),
-                                    onSelect = { catalogTabIndex = it },
-                                    fillMaxWidth = false
-                                )
-                            }
+                            SectionHeader(
+                                kicker = stringResource(R.string.artist_kicker_favorites),
+                                title = stringResource(R.string.artist_title_top_tracks),
+                                action = if (art.topTracks.size > 5) (if (showAllTracks) stringResource(R.string.action_less) else stringResource(R.string.action_see_all)) else null,
+                                onAction = { showAllTracks = !showAllTracks }
+                            )
+                        }
+
+                        itemsIndexed(displayedTracks) { index, track ->
+                            TrackTile(
+                                track = track,
+                                index = index,
+                                isPlayingThis = activeTrack?.id == track.id,
+                                onClick = { player.play(track, art.topTracks) },
+                                onMore = { onTrackOptions(track, art.topTracks) }
+                            )
                         }
                     }
 
-                    val currentReleases = when {
-                        hasAlbums && hasSingles -> if (catalogTabIndex == 0) art.albums else art.singlesAndEps
-                        hasAlbums -> art.albums
-                        else -> art.singlesAndEps
-                    }
+                    // Diskografi / Releases (Separated by tabs)
+                    if (hasAlbums || hasSingles) {
+                        item {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            SectionHeader(
+                                kicker = stringResource(R.string.artist_kicker_catalog),
+                                title = if (hasAlbums && hasSingles) stringResource(R.string.artist_title_releases) else if (hasAlbums) stringResource(R.string.artist_title_albums) else stringResource(R.string.artist_title_singles)
+                            )
+                        }
 
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(currentReleases) { alb ->
-                                Column(
+                        if (hasAlbums && hasSingles) {
+                            item {
+                                Box(
                                     modifier = Modifier
-                                        .width(140.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .clickable { onOpenAlbum(alb.id) }
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.CenterStart
                                 ) {
-                                    CoverImage(url = alb.image, size = 140, shapeRadius = 4)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = alb.name,
-                                        style = BlexsyTypography.Title.copy(
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "${alb.year ?: "—"} • ${alb.type}",
-                                        style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp),
-                                        maxLines = 1
+                                    BlexsyTabs(
+                                        tabs = listOf(stringResource(R.string.artist_tab_albums), stringResource(R.string.artist_tab_singles)),
+                                        selectedIndex = catalogTabIndex.coerceIn(0, 1),
+                                        onSelect = { catalogTabIndex = it },
+                                        fillMaxWidth = false
                                     )
                                 }
                             }
                         }
+
+                        val currentReleases = when {
+                            hasAlbums && hasSingles -> if (catalogTabIndex == 0) art.albums else art.singlesAndEps
+                            hasAlbums -> art.albums
+                            else -> art.singlesAndEps
+                        }
+
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(currentReleases) { alb ->
+                                    Column(
+                                        modifier = Modifier
+                                            .width(140.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { onOpenAlbum(alb.id) }
+                                    ) {
+                                        CoverImage(url = alb.image, size = 140, shapeRadius = 4)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = alb.name,
+                                            style = BlexsyTypography.Title.copy(
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "${alb.year ?: "—"} • ${alb.type}",
+                                            style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp),
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Focused catalog view: a 2-column grid of this artist's releases.
+                    val releases = if (currentPageTab == ArtistPageTab.Albums) art.albums else art.singlesAndEps
+                    item {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        SectionHeader(
+                            kicker = stringResource(R.string.artist_kicker_catalog),
+                            title = stringResource(
+                                if (currentPageTab == ArtistPageTab.Albums) R.string.artist_title_albums else R.string.artist_title_singles
+                            )
+                        )
+                    }
+                    items(releases.chunked(2)) { row ->
+                        ArtistReleaseGridRow(
+                            releases = row,
+                            onOpenAlbum = onOpenAlbum
+                        )
                     }
                 }
 
                 // Playlists dari Artis
-                if (art.playlists.isNotEmpty()) {
+                if (art.playlists.isNotEmpty() && currentPageTab == ArtistPageTab.All) {
                     item {
                         Spacer(modifier = Modifier.height(18.dp))
                         SectionHeader(
@@ -413,7 +464,7 @@ fun ArtistDetailScreen(
                 }
 
                 // Similar Artists (Mungkin Anda juga berminat / Fans Also Dig)
-                if (art.similarArtists.isNotEmpty()) {
+                if (art.similarArtists.isNotEmpty() && currentPageTab == ArtistPageTab.All) {
                     item {
                         Spacer(modifier = Modifier.height(18.dp))
                         SectionHeader(
@@ -464,47 +515,49 @@ fun ArtistDetailScreen(
                 }
 
                 // Biografi
-                art.biography?.let { bio ->
-                    if (bio.isNotBlank()) {
-                        item {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            SectionHeader(
-                                kicker = stringResource(R.string.artist_kicker_backstory),
-                                title = stringResource(R.string.artist_title_meet)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(BlexsyColors.SurfaceContainerHigh)
-                                    .padding(18.dp)
-                            ) {
-                                val annotatedBio = remember(bio) {
-                                    val formattedHtml = if (!bio.contains("<br", ignoreCase = true) && !bio.contains("<p", ignoreCase = true)) {
-                                        bio.replace("\n", "<br/>")
-                                    } else {
-                                        bio
-                                    }
-                                    runCatching {
-                                        AnnotatedString.fromHtml(
-                                            htmlString = formattedHtml,
-                                            linkStyles = TextLinkStyles(
-                                                style = SpanStyle(
-                                                    color = BlexsyColors.Primary,
-                                                    textDecoration = TextDecoration.Underline
+                if (currentPageTab == ArtistPageTab.All) {
+                    art.biography?.let { bio ->
+                        if (bio.isNotBlank()) {
+                            item {
+                                Spacer(modifier = Modifier.height(20.dp))
+                                SectionHeader(
+                                    kicker = stringResource(R.string.artist_kicker_backstory),
+                                    title = stringResource(R.string.artist_title_meet)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(BlexsyColors.SurfaceContainerHigh)
+                                        .padding(18.dp)
+                                ) {
+                                    val annotatedBio = remember(bio) {
+                                        val formattedHtml = if (!bio.contains("<br", ignoreCase = true) && !bio.contains("<p", ignoreCase = true)) {
+                                            bio.replace("\n", "<br/>")
+                                        } else {
+                                            bio
+                                        }
+                                        runCatching {
+                                            AnnotatedString.fromHtml(
+                                                htmlString = formattedHtml,
+                                                linkStyles = TextLinkStyles(
+                                                    style = SpanStyle(
+                                                        color = BlexsyColors.Primary,
+                                                        textDecoration = TextDecoration.Underline
+                                                    )
                                                 )
                                             )
-                                        )
-                                    }.getOrElse {
-                                        AnnotatedString(stripHtml(bio))
+                                        }.getOrElse {
+                                            AnnotatedString(stripHtml(bio))
+                                        }
                                     }
+                                    Text(
+                                        text = annotatedBio,
+                                        style = BlexsyTypography.BodyMuted,
+                                        lineHeight = 22.sp
+                                    )
                                 }
-                                Text(
-                                    text = annotatedBio,
-                                    style = BlexsyTypography.BodyMuted,
-                                    lineHeight = 22.sp
-                                )
                             }
                         }
                     }
@@ -531,7 +584,7 @@ fun ArtistDetailScreen(
                     modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        imageVector = IcArrowLeft,
                         contentDescription = stringResource(R.string.action_back),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(24.dp)
@@ -548,7 +601,7 @@ fun ArtistDetailScreen(
                         Text(
                             text = artist!!.name,
                             style = BlexsyTypography.Title.copy(
-                                fontFamily = DeezerBoldFont,
+                                fontFamily = HeadingFont,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.2.sp,
@@ -561,7 +614,7 @@ fun ArtistDetailScreen(
                         if (artist!!.verified) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                imageVector = Icons.Rounded.Verified,
+                                imageVector = IcSealCheck,
                                 contentDescription = stringResource(R.string.a11y_verified),
                                 tint = Color(0xFF3D91F4),
                                 modifier = Modifier.size(16.dp)
@@ -592,4 +645,62 @@ internal fun formatSubscriberNumber(count: Int): String = when {
     count >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", count / 1_000_000.0)
     count >= 1_000 -> String.format(java.util.Locale.US, "%.1fK", count / 1_000.0)
     else -> count.toString()
+}
+
+/** Artist page filters: everything, singles/EPs only, or albums only. */
+private enum class ArtistPageTab(val labelRes: Int) {
+    All(R.string.artist_tab_all),
+    Singles(R.string.artist_tab_singles),
+    Albums(R.string.artist_tab_albums)
+}
+
+/** Two-up grid row used by the focused Singles / Albums tabs. */
+@Composable
+private fun ArtistReleaseGridRow(
+    releases: List<AlbumSummary>,
+    onOpenAlbum: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        releases.forEach { alb ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onOpenAlbum(alb.id) }
+            ) {
+                CoverImage(
+                    url = alb.image,
+                    size = 0,
+                    shapeRadius = 4,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = alb.name,
+                    style = BlexsyTypography.Title.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${alb.year ?: "—"} • ${alb.type}",
+                    style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp),
+                    maxLines = 1
+                )
+            }
+        }
+        if (releases.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
 }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -29,17 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blek.blexsy.model.Track
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Timer
 
 /** Overflow menu for the currently playing track. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +85,7 @@ internal fun PlayerMoreSheet(
             val playbackItems = listOfNotNull(
                 if (canSaveToLibrary) {
                     SheetOptionItem(
-                        icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        icon = if (isFavorite) IcHeartFilled else IcHeartOutline,
                         label = if (isFavorite) stringResource(R.string.player_remove_favorite) else stringResource(R.string.player_save_favorite),
                         tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextPrimary,
                         onClick = onToggleFavorite
@@ -105,23 +93,23 @@ internal fun PlayerMoreSheet(
                 } else null,
                 if (onAddToPlaylist != null) {
                     SheetOptionItem(
-                        icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        icon = IcPlaylist,
                         label = stringResource(R.string.player_add_to_playlist),
                         onClick = { closeThen(onAddToPlaylist) }
                     )
                 } else null,
                 SheetOptionItem(
-                    icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
+                    icon = IcPlaylist,
                     label = stringResource(R.string.player_queue_next),
                     onClick = { closeThen(onPlayNext) }
                 ),
                 SheetOptionItem(
-                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                    icon = IcQueue,
                     label = stringResource(R.string.player_toss_queue),
                     onClick = { closeThen(onAddToQueue) }
                 ),
                 SheetOptionItem(
-                    icon = Icons.Rounded.Radio,
+                    icon = IcRadio,
                     label = stringResource(R.string.player_start_radio),
                     onClick = { closeThen(onStartRadio) }
                 )
@@ -132,20 +120,20 @@ internal fun PlayerMoreSheet(
             val infoItems = listOfNotNull(
                 if (onViewArtist != null && (artistId != null || track.artist.isNotBlank())) {
                     SheetOptionItem(
-                        icon = Icons.Rounded.Person,
+                        icon = IcUser,
                         label = stringResource(R.string.player_view_artist),
                         onClick = { closeThen(onViewArtist) }
                     )
                 } else null,
                 if (onViewAlbum != null && albumId != null) {
                     SheetOptionItem(
-                        icon = Icons.Rounded.Album,
+                        icon = IcDisc,
                         label = stringResource(R.string.player_view_album),
                         onClick = { closeThen(onViewAlbum) }
                     )
                 } else null,
                 SheetOptionItem(
-                    icon = Icons.Rounded.Info,
+                    icon = IcInfo,
                     label = stringResource(R.string.player_track_credits),
                     subtitle = stringResource(R.string.player_credits_subtitle),
                     onClick = { closeThen(onShowCredits) }
@@ -161,14 +149,14 @@ internal fun PlayerMoreSheet(
             val utilityItems = listOfNotNull(
                 if (onShowEqualizer != null) {
                     SheetOptionItem(
-                        icon = Icons.Rounded.GraphicEq,
+                        icon = IcEqualizer,
                         label = stringResource(R.string.player_equalizer),
                         subtitle = stringResource(R.string.player_equalizer_subtitle),
                         onClick = { closeThen(onShowEqualizer) }
                     )
                 } else null,
                 SheetOptionItem(
-                    icon = Icons.Rounded.Timer,
+                    icon = IcTimer,
                     label = if (sleepTimerActive) stringResource(R.string.player_sleep_timer_active) else stringResource(R.string.player_sleep_timer),
                     tint = if (sleepTimerActive) BlexsyColors.Primary else BlexsyColors.TextPrimary,
                     onClick = { closeThen(onShowSleepTimer) }

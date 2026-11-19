@@ -48,10 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blek.blexsy.player.BlexsyAudioPlayer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SkipNext
 
 /** Full-rounded pill mini player with circular progress encircling cover art. */
 @Composable
@@ -198,7 +194,7 @@ fun MiniPlayer(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    imageVector = if (isPlaying) IcPause else IcPlay,
                                     contentDescription = stringResource(if (isPlaying) R.string.player_pause else R.string.player_play),
                                     tint = BlexsyColors.TextPrimary,
                                     modifier = Modifier.size(26.dp)
@@ -211,7 +207,7 @@ fun MiniPlayer(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.SkipNext,
+                                imageVector = IcSkipForward,
                                 contentDescription = stringResource(R.string.a11y_next),
                                 tint = BlexsyColors.TextPrimary,
                                 modifier = Modifier.size(24.dp)

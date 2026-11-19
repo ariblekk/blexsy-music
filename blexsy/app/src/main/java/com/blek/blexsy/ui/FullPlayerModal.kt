@@ -9,6 +9,8 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -22,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
 import androidx.compose.ui.res.stringResource
 import com.blek.blexsy.R
 import androidx.compose.ui.graphics.RectangleShape
@@ -53,6 +54,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -63,7 +65,9 @@ import coil3.compose.AsyncImage
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
 import com.blek.blexsy.model.LyricsResult
+import com.blek.blexsy.model.Track
 import com.blek.blexsy.model.TrackCredits
+import com.blek.blexsy.model.isCatalogArtistId
 import com.blek.blexsy.player.BlexsyAudioPlayer
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.delay
@@ -173,10 +177,8 @@ fun FullPlayerModal(
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
-    // Only real YouTube Music channel ids can open an artist page; a bare name cannot.
-    val artists = track.artistRefs.filter {
-        it.first.startsWith("UC") || it.first.startsWith("FEmusic_artist")
-    }
+    // Every artist gets an entry; entries without a catalog id are resolved by name on tap.
+    val artists = track.artistRefs
     var creditsData by remember(track.id) { mutableStateOf<TrackCredits?>(null) }
     var isLoadingCredits by remember(track.id) { mutableStateOf(false) }
 
@@ -280,16 +282,34 @@ fun FullPlayerModal(
     )
 
     val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val dismissThresholdPx = with(density) { 140.dp.toPx() }
 
-    // Predictive-back drag: the panel slides down while the gesture is in progress, then
-    // eases back to 0 so the sheet's own hide animation is the only downward motion left.
-    val predictiveOffsetPx = remember { Animatable(0f) }
-    val predictiveSlideDistancePx = with(density) { 420.dp.toPx() }
+    val dismissOffsetY = remember { Animatable(0f) }
+    val dismissAlpha = remember { Animatable(1f) }
+    var isDismissing by remember { mutableStateOf(false) }
 
     val hideSheet: () -> Unit = {
-        scope.launch { predictiveOffsetPx.animateTo(0f, tween(180)) }
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        if (!isDismissing) {
+            isDismissing = true
+            scope.launch {
+                launch {
+                    dismissOffsetY.animateTo(
+                        targetValue = screenHeightPx,
+                        animationSpec = tween(durationMillis = 360, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+                    )
+                }
+                launch {
+                    dismissAlpha.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 300, easing = LinearOutSlowInEasing)
+                    )
+                }
+            }.invokeOnCompletion {
+                scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+            }
+        }
     }
 
     val dismissConnection = remember(sheetState, dismissThresholdPx, showLyrics, showQueue) {
@@ -320,24 +340,28 @@ fun FullPlayerModal(
     }
 
     val handleBack: () -> Unit = {
-        if (showLyrics) {
-            showLyrics = false
-        } else if (showQueue) {
-            showQueue = false
-        } else {
-            hideSheet()
+        if (!isDismissing) {
+            if (showLyrics) {
+                showLyrics = false
+            } else if (showQueue) {
+                showQueue = false
+            } else {
+                hideSheet()
+            }
         }
     }
 
-    // Shared by every panel: close the player, then open the artist page.
-    val navigateToArtist: (String) -> Unit = { artistId ->
+    // Shared by every panel: close the player, then open the artist page. A display name is fine
+    // too — the artist page resolves it itself while its skeleton shows.
+    val navigateToArtist: (String) -> Unit = { rawArtistsId ->
         scope.launch { sheetState.hide() }.invokeOnCompletion {
             onDismiss()
-            onOpenArtist?.invoke(artistId)
+            onOpenArtist?.invoke(rawArtistsId.trim())
         }
     }
     val artistClick: (() -> Unit)? = if (onOpenArtist != null && artists.isNotEmpty()) {
         {
+            // One artist: open it. Several: let the user pick, in credited order.
             if (artists.size > 1) {
                 showSelectArtistSheet = true
             } else {
@@ -353,33 +377,16 @@ fun FullPlayerModal(
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
         containerColor = Color.Transparent,
-        scrimColor = Color.Black.copy(alpha = 0.72f),
+        scrimColor = Color.Black.copy(alpha = 0.72f * dismissAlpha.value),
         shape = RectangleShape,
         dragHandle = null,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
         PredictiveBackHandler(enabled = true) { progress ->
-            if (showLyrics) {
-                try {
-                    progress.collect {}
-                    showLyrics = false
-                } catch (_: CancellationException) {}
-            } else if (showQueue) {
-                try {
-                    progress.collect {}
-                    showQueue = false
-                } catch (_: CancellationException) {}
-            } else {
-                try {
-                    progress.collect { backEvent ->
-                        predictiveOffsetPx.snapTo(backEvent.progress * predictiveSlideDistancePx)
-                    }
-                    hideSheet()
-                } catch (_: CancellationException) {
-                    // Gesture cancelled: settle the panel back into place instead of snapping.
-                    predictiveOffsetPx.animateTo(0f, tween(180))
-                }
-            }
+            try {
+                progress.collect {}
+                handleBack()
+            } catch (_: CancellationException) {}
         }
 
         val view = LocalView.current
@@ -413,9 +420,11 @@ fun FullPlayerModal(
 
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .graphicsLayer { translationY = predictiveOffsetPx.value }
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = dismissOffsetY.value
+                    alpha = dismissAlpha.value
+                }
                 .nestedScroll(dismissConnection)
         ) {
             // 1. Backdrop: the track's own artwork, blurred and darkened. Nothing else is fetched —
@@ -591,22 +600,15 @@ fun FullPlayerModal(
                         showAddToPlaylistSheet = true
                     }
                 } else null,
-                // Tracks from home carousels often arrive without a channel id, which used to hide
-                // this row completely. Keep it and resolve the artist by name on tap instead.
-                onViewArtist = if (onOpenArtist != null && track.artist.isNotBlank()) {
+                // Multiple credited artists always go through the picker, even when none of them
+                // has a catalog id yet: each name is resolved when the user picks it.
+                onViewArtist = if (onOpenArtist != null && artists.isNotEmpty()) {
                     {
                         showMoreSheet = false
-                        val knownId = artists.firstOrNull()?.first
-                        when {
-                            artists.size > 1 -> showSelectArtistSheet = true
-                            knownId != null -> navigateToArtist(knownId)
-                            else -> scope.launch {
-                                val resolved = runCatching {
-                                    api?.searchArtists(track.artist.substringBefore(",").trim())
-                                        ?.firstOrNull()?.channelId
-                                }.getOrNull()
-                                if (resolved != null) navigateToArtist(resolved)
-                            }
+                        if (artists.size > 1) {
+                            showSelectArtistSheet = true
+                        } else {
+                            navigateToArtist(artists.first().first)
                         }
                     }
                 } else null,
@@ -652,6 +654,7 @@ fun FullPlayerModal(
                 onDismiss = { showSelectArtistSheet = false },
                 onSelectArtist = { selectedArtistId ->
                     showSelectArtistSheet = false
+                    // Callback carries the id; unresolved entries carry their name in that slot.
                     navigateToArtist(selectedArtistId)
                 }
             )

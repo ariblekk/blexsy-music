@@ -97,6 +97,7 @@
     <string name="search_bar_placeholder">What\'re we bumping today?</string>
     <string name="search_field_placeholder">Search tracks, artists, or vibes...</string>
     <string name="search_recent_digs">Recent digs</string>
+    <string name="search_recent_played">Recently played</string>
     <string name="search_clear_history">Clear \'em</string>
     <string name="search_zero_hits">Zero hits for \u201C%1$s\u201D. Typo or too underground?</string>
     <string name="search_failed">Couldn\'t reach the search server.</string>
@@ -112,6 +113,10 @@
     <!-- Listen Now Tab -->
     <string name="listen_charts_kicker">THE CHARTS</string>
     <string name="listen_charts_title">Top 50 Indo Heat</string>
+    <string name="listen_trending_kicker">RISING NOW</string>
+    <string name="listen_trending_title">Trending Lagu</string>
+    <string name="listen_trending_artists_kicker">HOT IN THE MARKET</string>
+    <string name="listen_trending_artists_title">Trending Artis</string>
     <string name="listen_drops_kicker">FRESH DROPS</string>
     <string name="listen_drops_title">New Releases</string>
     <string name="listen_repeat_kicker">ON REPEAT</string>
@@ -188,12 +193,12 @@
     <string name="player_save_favorite">Save to Liked Bangers</string>
     <string name="player_add_to_playlist">Add to playlist</string>
     <string name="player_queue_next">Queue up next</string>
-    <string name="player_toss_queue">Toss in queue</string>
-    <string name="player_start_radio">Start radio</string>
-    <string name="player_view_artist">View artist</string>
-    <string name="player_view_album">View album</string>
+    <string name="player_toss_queue">Add to queue</string>
+    <string name="player_start_radio">Start song radio</string>
+    <string name="player_view_artist">Open artist</string>
+    <string name="player_view_album">Open album</string>
     <string name="player_select_artist_title">Select artist</string>
-    <string name="player_track_credits">Track credits</string>
+    <string name="player_track_credits">View track credits</string>
     <string name="player_credits_subtitle">Show songwriters, producers, and lyrics sources</string>
     <string name="player_credits_source">Source</string>
     <string name="player_credits_not_found">No credits found for this track.</string>
@@ -261,6 +266,7 @@
     <string name="artist_title_singles">Singles &amp; EPs</string>
     <string name="artist_tab_albums">Albums</string>
     <string name="artist_tab_singles">Singles &amp; EPs</string>
+    <string name="artist_tab_all">All</string>
     <string name="artist_kicker_curated">CURATED CRATES</string>
     <string name="artist_title_playlists">Artist Playlists</string>
     <string name="artist_kicker_similar">SIMILAR VIBES</string>

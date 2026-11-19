@@ -3,8 +3,6 @@ package com.blek.blexsy.ui
 import com.blek.blexsy.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -55,7 +53,7 @@ fun DetailAppBar(
                     modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        imageVector = IcArrowLeft,
                         contentDescription = stringResource(R.string.action_back),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(24.dp)

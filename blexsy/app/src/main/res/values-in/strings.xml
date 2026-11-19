@@ -97,6 +97,7 @@
     <string name="search_bar_placeholder">Mau dengar apa hari ini?</string>
     <string name="search_field_placeholder">Cari lagu, artis, atau suasana...</string>
     <string name="search_recent_digs">Pencarian terakhir</string>
+    <string name="search_recent_played">Diputar terakhir</string>
     <string name="search_clear_history">Hapus</string>
     <string name="search_zero_hits">Tidak ada hasil untuk “%1$s”. Salah ketik atau terlalu underground?</string>
     <string name="search_failed">Gagal menghubungi server pencarian.</string>
@@ -112,6 +113,10 @@
     <!-- Listen Now Tab -->
     <string name="listen_charts_kicker">TANGGA LAGU</string>
     <string name="listen_charts_title">Top 50 Hits Indonesia</string>
+    <string name="listen_trending_kicker">LAGI NAIK</string>
+    <string name="listen_trending_title">Trending Lagu</string>
+    <string name="listen_trending_artists_kicker">PANAS DI PASARAN</string>
+    <string name="listen_trending_artists_title">Trending Artis</string>
     <string name="listen_drops_kicker">RILIS TERBARU</string>
     <string name="listen_drops_title">Rilis Baru</string>
     <string name="listen_repeat_kicker">SERING DIPUTAR</string>
@@ -186,14 +191,14 @@
     <string name="player_play">Putar</string>
     <string name="player_remove_favorite">Hapus dari Lagu Favorit</string>
     <string name="player_save_favorite">Simpan ke Lagu Favorit</string>
-    <string name="player_add_to_playlist">Tambah ke playlist</string>
+    <string name="player_add_to_playlist">Tambahkan ke playlist</string>
     <string name="player_queue_next">Putar berikutnya</string>
-    <string name="player_toss_queue">Masukkan antrean</string>
-    <string name="player_start_radio">Mulai radio</string>
-    <string name="player_view_artist">Lihat artis</string>
-    <string name="player_view_album">Lihat album</string>
+    <string name="player_toss_queue">Tambahkan ke antrian</string>
+    <string name="player_start_radio">Putar radio lagu</string>
+    <string name="player_view_artist">Buka artist</string>
+    <string name="player_view_album">Buka album</string>
     <string name="player_select_artist_title">Pilih artis</string>
-    <string name="player_track_credits">Kredit lagu</string>
+    <string name="player_track_credits">Lihat kredit lagu</string>
     <string name="player_credits_subtitle">Tampilkan pencipta lagu, produser, dan sumber lirik</string>
     <string name="player_credits_source">Sumber</string>
     <string name="player_credits_not_found">Tidak ada kredit untuk trek ini.</string>
@@ -261,6 +266,7 @@
     <string name="artist_title_singles">Single &amp; EP</string>
     <string name="artist_tab_albums">Album</string>
     <string name="artist_tab_singles">Single &amp; EP</string>
+    <string name="artist_tab_all">Semua</string>
     <string name="artist_kicker_curated">PLAYLIST ARTIS</string>
     <string name="artist_title_playlists">Playlist Artis</string>
     <string name="artist_kicker_similar">SERUPA</string>

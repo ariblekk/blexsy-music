@@ -20,9 +20,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.LightMode
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -504,7 +501,7 @@ fun SyncedLyricsView(
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.LightMode,
+                            imageVector = IcSun,
                             contentDescription = stringResource(R.string.a11y_keep_screen_on),
                             modifier = Modifier.size(19.dp)
                         )
@@ -557,7 +554,7 @@ fun SyncedLyricsView(
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Translate,
+                            imageVector = IcTranslate,
                             contentDescription = stringResource(R.string.a11y_translate_lyrics),
                             modifier = Modifier.size(19.dp)
                         )

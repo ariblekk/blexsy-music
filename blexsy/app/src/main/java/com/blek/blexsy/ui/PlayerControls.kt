@@ -43,14 +43,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.blek.blexsy.player.BlexsyAudioPlayer
 import com.blek.blexsy.player.PlaybackRepeatMode
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Lyrics
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.Timer
 
 /**
  * Scrubber, transport buttons, volume slider and the lyrics / queue toggles that
@@ -167,8 +159,14 @@ internal fun PlayerControls(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val displayPos = if (isScrubbing) (dragFraction * maxDur).toLong() else positionMs
-                Text(text = formatDuration(displayPos), style = BlexsyTypography.Caption)
-                Text(text = formatDuration(durationMs), style = BlexsyTypography.Caption)
+                Text(
+                    text = formatDuration(displayPos),
+                    style = BlexsyTypography.Caption.copy(fontFamily = MonoFont)
+                )
+                Text(
+                    text = formatDuration(durationMs),
+                    style = BlexsyTypography.Caption.copy(fontFamily = MonoFont)
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -183,7 +181,7 @@ internal fun PlayerControls(
                     player.toggleRepeat()
                 }) {
                     Icon(
-                        imageVector = if (repeatMode == PlaybackRepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                        imageVector = if (repeatMode == PlaybackRepeatMode.ONE) IcRepeatOnce else IcRepeat,
                         contentDescription = stringResource(R.string.a11y_repeat),
                         tint = if (repeatMode != PlaybackRepeatMode.OFF) BlexsyColors.Primary else BlexsyColors.TextSecondary,
                         modifier = Modifier.size(22.dp)
@@ -198,7 +196,7 @@ internal fun PlayerControls(
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.SkipPrevious,
+                        imageVector = IcSkipBack,
                         contentDescription = stringResource(R.string.a11y_previous),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(34.dp)
@@ -220,7 +218,7 @@ internal fun PlayerControls(
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.SkipNext,
+                        imageVector = IcSkipForward,
                         contentDescription = stringResource(R.string.a11y_next),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(34.dp)
@@ -229,7 +227,7 @@ internal fun PlayerControls(
 
                 IconButton(onClick = onOpenSleepTimer) {
                     Icon(
-                        imageVector = Icons.Rounded.Timer,
+                        imageVector = IcTimer,
                         contentDescription = stringResource(R.string.player_sleep_timer),
                         tint = if (SleepTimer.isActive) BlexsyColors.Primary else BlexsyColors.TextSecondary,
                         modifier = Modifier.size(22.dp)
@@ -263,7 +261,7 @@ internal fun PlayerControls(
                     shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                     icon = {
                         Icon(
-                            imageVector = Icons.Rounded.Lyrics,
+                            imageVector = IcSubtitles,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -283,7 +281,7 @@ internal fun PlayerControls(
                     shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
                     icon = {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                            imageVector = IcQueue,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )

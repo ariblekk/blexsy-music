@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,16 +55,21 @@ enum class AppLanguage(
  * ponytail: shared preferences storage with instant Compose State updates; upgrade to DataStore if complex themes are added.
  */
 object BlexsyThemeConfig {
+    /** Blek Yellow: the brand accent every install starts on. */
+    val DefaultPrimaryColor = Color(0xFFCCF05B)
+
     var appName by mutableStateOf("Blexsy")
-    var primaryColor by mutableStateOf(Color(0xFF1DB954))
+    var primaryColor by mutableStateOf(DefaultPrimaryColor)
     var themeMode by mutableStateOf(ThemeMode.DARK)
     var appLanguage by mutableStateOf(AppLanguage.SYSTEM)
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences("blexsy_prefs", Context.MODE_PRIVATE)
         appName = prefs.getString("custom_app_name", "Blexsy")?.ifBlank { "Blexsy" } ?: "Blexsy"
-        val argb = prefs.getInt("custom_primary_color", 0xFF1DB954.toInt())
-        primaryColor = Color(argb)
+        val stored = prefs.getInt("custom_primary_color", DefaultPrimaryColor.toArgb())
+        // Spotify Green was the old default and is no longer a preset, so an install still holding it
+        // moves to the brand yellow instead of keeping an accent the picker can no longer show.
+        primaryColor = if (stored == 0xFF1DB954.toInt()) DefaultPrimaryColor else Color(stored)
         val savedTheme = prefs.getString("theme_mode", ThemeMode.DARK.name)
         themeMode = runCatching { ThemeMode.valueOf(savedTheme ?: ThemeMode.DARK.name) }.getOrDefault(ThemeMode.DARK)
         val savedLang = prefs.getString("app_language", AppLanguage.SYSTEM.name)
@@ -202,25 +206,9 @@ val FrostGrainBrush: ShaderBrush by lazy {
     ShaderBrush(ImageShader(tile.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
 }
 
-internal val LocalBlexsyFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
+internal val LocalBlexsyFontFamily = staticCompositionLocalOf<FontFamily> { SansFont }
 
-val DeezerFont = FontFamily(
-    Font(R.font.deezer_bold, FontWeight.Bold),
-    Font(R.font.deezer_extrabold, FontWeight.ExtraBold)
-)
-val DeezerBoldFont = FontFamily(Font(R.font.deezer_bold, FontWeight.Bold))
-val DeezerExtraBoldFont = FontFamily(Font(R.font.deezer_extrabold, FontWeight.ExtraBold))
-
-@Composable
-private fun poppinsFontFamily(): FontFamily = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold),
-    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
-)
-
-private fun poppinsTypography(fontFamily: FontFamily): Typography {
+private fun blexsyTypography(fontFamily: FontFamily): Typography {
     val base = Typography()
     return base.copy(
         displayLarge = base.displayLarge.copy(fontFamily = fontFamily),
@@ -244,7 +232,7 @@ private fun poppinsTypography(fontFamily: FontFamily): Typography {
 object BlexsyTypography {
     val Display: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = DeezerExtraBoldFont,
+            fontFamily = HeadingFont,
             fontSize = 32.sp,
             lineHeight = 38.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -254,7 +242,7 @@ object BlexsyTypography {
 
     val Hero: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = DeezerExtraBoldFont,
+            fontFamily = HeadingFont,
             fontSize = 26.sp,
             lineHeight = 32.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -264,7 +252,7 @@ object BlexsyTypography {
 
     val SectionTitle: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = DeezerExtraBoldFont,
+            fontFamily = HeadingFont,
             fontSize = 22.sp,
             lineHeight = 28.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -274,7 +262,7 @@ object BlexsyTypography {
 
     val Eyebrow: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.8.sp,
@@ -283,7 +271,7 @@ object BlexsyTypography {
 
     val Title: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 16.sp,
             lineHeight = 21.sp,
             fontWeight = FontWeight.Medium,
@@ -293,7 +281,7 @@ object BlexsyTypography {
 
     val TitleActive: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 16.sp,
             lineHeight = 21.sp,
             fontWeight = FontWeight.SemiBold,
@@ -303,7 +291,7 @@ object BlexsyTypography {
 
     val Subtitle: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 14.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Normal,
@@ -312,7 +300,7 @@ object BlexsyTypography {
 
     val Body: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 15.sp,
             lineHeight = 22.sp,
             fontWeight = FontWeight.Normal,
@@ -321,7 +309,7 @@ object BlexsyTypography {
 
     val BodyMuted: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 14.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Normal,
@@ -330,7 +318,7 @@ object BlexsyTypography {
 
     val Caption: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
             letterSpacing = 0.1.sp,
@@ -339,7 +327,7 @@ object BlexsyTypography {
 
     val Label: TextStyle
         @Composable get() = TextStyle(
-            fontFamily = LocalBlexsyFontFamily.current,
+            fontFamily = SansFont,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.sp,
@@ -360,7 +348,7 @@ fun BlexsyTheme(content: @Composable () -> Unit) {
         if (currentLang.code.isEmpty()) {
             context
         } else {
-            val locale = java.util.Locale(currentLang.code)
+            val locale = java.util.Locale.forLanguageTag(currentLang.code)
             java.util.Locale.setDefault(locale)
             val config = android.content.res.Configuration(context.resources.configuration)
             config.setLocale(locale)
@@ -371,7 +359,6 @@ fun BlexsyTheme(content: @Composable () -> Unit) {
         localizedContext.resources.configuration
     }
 
-    val poppins = poppinsFontFamily()
     val primary = BlexsyThemeConfig.primaryColor
     val themeMode = BlexsyThemeConfig.themeMode
     val colorScheme = remember(primary, themeMode) {
@@ -406,13 +393,13 @@ fun BlexsyTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalContext provides localizedContext,
         androidx.compose.ui.platform.LocalConfiguration provides localizedConfiguration,
-        LocalBlexsyFontFamily provides poppins
+        LocalBlexsyFontFamily provides SansFont
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             motionScheme = MotionScheme.expressive(),
             shapes = BlexsyShapes,
-            typography = poppinsTypography(poppins),
+            typography = blexsyTypography(SansFont),
             content = content
         )
     }

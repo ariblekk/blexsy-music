@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -106,7 +103,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    imageVector = IcArrowLeft,
                     contentDescription = stringResource(R.string.action_back),
                     tint = BlexsyColors.TextPrimary
                 )
@@ -182,7 +179,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Refresh,
+                                imageVector = IcRefresh,
                                 contentDescription = stringResource(R.string.eq_reset),
                                 tint = BlexsyColors.Primary,
                                 modifier = Modifier.size(16.dp)
@@ -253,6 +250,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
                             Text(
                                 text = "${formatFreq(node.frequency)} • ${if (node.gain > 0) "+" else ""}${String.format("%.1f dB", node.gain)}",
                                 style = BlexsyTypography.Caption.copy(
+                                    fontFamily = MonoFont,
                                     color = color,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -336,7 +334,10 @@ fun EqualizerScreen(onBack: () -> Unit) {
                                         )
                                         Text(
                                             text = "${node.filterType} • Q ${String.format("%.2f", node.q)}",
-                                            style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextMuted)
+                                            style = BlexsyTypography.Caption.copy(
+                                                fontFamily = MonoFont,
+                                                color = BlexsyColors.TextMuted
+                                            )
                                         )
                                     }
                                     Switch(
@@ -398,16 +399,24 @@ fun EqualizerScreen(onBack: () -> Unit) {
                                     Text(stringResource(R.string.eq_gain), style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextSecondary))
                                     Text(
                                         (if (node.gain > 0) "+" else "") + String.format("%.1f dB", node.gain),
-                                        style = BlexsyTypography.Caption.copy(color = color, fontWeight = FontWeight.Bold)
+                                        style = BlexsyTypography.Caption.copy(
+                                            fontFamily = MonoFont,
+                                            color = color,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     )
                                 }
+                                val gainSliderState = rememberSliderState(
+                                    node.gain.toFloat(),
+                                    0,
+                                    -12f..12f
+                                )
                                 Slider(
-                                    value = node.gain.toFloat(),
+                                    state = gainSliderState,
                                     onValueChange = { v ->
                                         val snapped = ((v * 10).roundToInt() / 10.0).let { if (abs(it) < 0.25) 0.0 else it }
                                         BlexsyEqualizer.updateNode(safeIdx) { it.copy(gain = snapped) }
                                     },
-                                    valueRange = -12f..12f,
                                     enabled = eqState.enabled && node.enabled,
                                     colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = color)
                                 )
@@ -420,15 +429,25 @@ fun EqualizerScreen(onBack: () -> Unit) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(stringResource(R.string.eq_q_factor), style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextSecondary))
-                                    Text(String.format("%.2f", node.q), style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextPrimary))
+                                    Text(
+                                        String.format("%.2f", node.q),
+                                        style = BlexsyTypography.Caption.copy(
+                                            fontFamily = MonoFont,
+                                            color = BlexsyColors.TextPrimary
+                                        )
+                                    )
                                 }
+                                val qSliderState = rememberSliderState(
+                                    node.q.toFloat(),
+                                    0,
+                                    0.3f..5.0f
+                                )
                                 Slider(
-                                    value = node.q.toFloat(),
+                                    state = qSliderState,
                                     onValueChange = { v ->
                                         val roundedQ = (v * 100).roundToInt() / 100.0
                                         BlexsyEqualizer.updateNode(safeIdx) { it.copy(q = roundedQ) }
                                     },
-                                    valueRange = 0.3f..5.0f,
                                     enabled = eqState.enabled && node.enabled && node.filterType == FilterType.PK,
                                     colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = color)
                                 )
@@ -501,15 +520,20 @@ fun EqualizerScreen(onBack: () -> Unit) {
                             Text(
                                 text = preampText,
                                 style = BlexsyTypography.Caption.copy(
+                                    fontFamily = MonoFont,
                                     color = if (eqState.preamp != 0.0) BlexsyColors.Primary else BlexsyColors.TextMuted,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
                         }
+                        val preampSliderState = rememberSliderState(
+                            eqState.preamp.toFloat(),
+                            0,
+                            -12f..12f
+                        )
                         Slider(
-                            value = eqState.preamp.toFloat(),
+                            state = preampSliderState,
                             onValueChange = { BlexsyEqualizer.setPreamp(it.toDouble()) },
-                            valueRange = -12f..12f,
                             enabled = eqState.enabled,
                             colors = SliderDefaults.colors(
                                 thumbColor = Color.White,
@@ -697,8 +721,18 @@ private fun InteractiveEqCanvas(
     val currentOnBandGain by rememberUpdatedState(onBandGain)
     var activeColumn by remember { mutableIntStateOf(-1) }
 
-    val valueStyle = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 9.sp, color = BlexsyColors.TextSecondary)
-    val freqStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 10.sp, color = BlexsyColors.TextMuted)
+    val valueStyle = TextStyle(
+        fontFamily = MonoFont,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 9.sp,
+        color = BlexsyColors.TextSecondary
+    )
+    val freqStyle = TextStyle(
+        fontFamily = MonoFont,
+        fontWeight = FontWeight.Medium,
+        fontSize = 10.sp,
+        color = BlexsyColors.TextMuted
+    )
 
     Canvas(
         modifier = Modifier
@@ -845,6 +879,11 @@ private fun BandRow(
 ) {
     val haptic = LocalHapticFeedback.current
     var lastVibratedGain by remember(band.frequency) { mutableStateOf(band.gain) }
+    val gainSliderState = rememberSliderState(
+        band.gain.toFloat(),
+        0,
+        -Biquad.MaxGainDb.toFloat()..Biquad.MaxGainDb.toFloat()
+    )
 
     Row(
         modifier = Modifier
@@ -857,6 +896,7 @@ private fun BandRow(
         Text(
             text = formatFreq(band.frequency),
             style = BlexsyTypography.Caption.copy(
+                fontFamily = MonoFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 color = if (band.gain != 0.0 && enabled) BlexsyColors.Primary else BlexsyColors.TextPrimary
@@ -865,7 +905,7 @@ private fun BandRow(
         )
 
         Slider(
-            value = band.gain.toFloat(),
+            state = gainSliderState,
             onValueChange = { raw ->
                 val rounded = (raw * 2).roundToInt() / 2.0
                 val finalGain = if (abs(rounded) < 0.4) 0.0 else rounded
@@ -875,7 +915,6 @@ private fun BandRow(
                 lastVibratedGain = finalGain
                 onGainChange(finalGain)
             },
-            valueRange = -Biquad.MaxGainDb.toFloat()..Biquad.MaxGainDb.toFloat(),
             enabled = enabled,
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(
@@ -889,6 +928,7 @@ private fun BandRow(
         Text(
             text = gainText,
             style = BlexsyTypography.Caption.copy(
+                fontFamily = MonoFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 11.sp,
                 color = if (band.gain != 0.0 && enabled) BlexsyColors.Primary else BlexsyColors.TextMuted

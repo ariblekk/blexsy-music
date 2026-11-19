@@ -412,12 +412,6 @@ fun SearchResultsSkeleton() {
     }
 }
 
-/** Loading state for the genre page: hero plus playlist rows. */
-@Composable
-fun GenreDetailSkeleton(modifier: Modifier = Modifier) {
-    DetailHeroSkeleton(modifier = modifier, rows = 6)
-}
-
 /** Loading state matching the edge-to-edge ArtistDetailScreen hero layout. */
 @Composable
 fun ArtistDetailSkeleton(

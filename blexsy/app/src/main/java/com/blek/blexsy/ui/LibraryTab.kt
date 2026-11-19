@@ -39,7 +39,6 @@ import coil3.compose.AsyncImage
 import com.blek.blexsy.BuildConfig
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
-import com.blek.blexsy.model.Genre
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
 import com.blek.blexsy.model.toHighResArtwork
@@ -53,8 +52,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.roundToInt
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
 
 @Composable
 internal fun LibraryTab(
@@ -98,7 +95,7 @@ internal fun LibraryTab(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Favorite,
+                        imageVector = IcHeartFilled,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)

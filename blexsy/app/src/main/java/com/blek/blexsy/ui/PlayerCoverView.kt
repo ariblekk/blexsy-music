@@ -29,8 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blek.blexsy.R
 import com.blek.blexsy.model.Track
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreHoriz
 
 /** Artwork panel: large cover, title / artist line and the more-options button. */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -134,7 +132,7 @@ internal fun PlayerCoverView(
                         )
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MoreHoriz,
+                        imageVector = IcDotsThree,
                         contentDescription = stringResource(R.string.a11y_more_options),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(22.dp)

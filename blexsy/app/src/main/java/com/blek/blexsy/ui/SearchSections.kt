@@ -23,13 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,21 +32,26 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.blek.blexsy.model.AlbumSummary
+import com.blek.blexsy.data.SpotifyBrowseCategory
 import com.blek.blexsy.model.ArtistSummary
-import com.blek.blexsy.model.Genre
-import com.blek.blexsy.model.GenrePlaylist
 import com.blek.blexsy.model.Track
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 /**
  * List builders shared by the Search tab (display mode) and the full-screen search page,
@@ -100,7 +98,7 @@ internal fun LazyListScope.searchHistorySection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Rounded.History,
+                imageVector = IcHistory,
                 contentDescription = null,
                 tint = BlexsyColors.TextSecondary,
                 modifier = Modifier.size(18.dp)
@@ -120,7 +118,7 @@ internal fun LazyListScope.searchHistorySection(
                     .padding(6.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Close,
+                    imageVector = IcClose,
                     contentDescription = stringResource(R.string.a11y_clear),
                     tint = BlexsyColors.TextTertiary,
                     modifier = Modifier.size(14.dp)
@@ -130,44 +128,43 @@ internal fun LazyListScope.searchHistorySection(
     }
 }
 
-internal fun LazyListScope.browseAllSection(
-    genres: List<Genre>,
-    onGenreClick: (Genre) -> Unit
+/**
+ * Autocomplete rows shown while a query is being typed: locally known names that start with
+ * what is already typed. Tapping one runs it as a committed search.
+ */
+internal fun LazyListScope.searchSuggestionsSection(
+    suggestions: List<String>,
+    onSuggestionClick: (String) -> Unit
 ) {
-    item {
-        SectionHeader(
-            kicker = stringResource(R.string.search_kicker_discover),
-            title = stringResource(R.string.search_title_browse_all)
-        )
-    }
-    items(genres.chunked(2)) { row ->
+    items(suggestions, key = { "suggestion:$it" }) { item ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .clickable { onSuggestionClick(item) }
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            row.forEach { genre ->
-                val globalIndex = genres.indexOf(genre)
-                CategoryTile(
-                    name = genre.name,
-                    index = globalIndex,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(104.dp),
-                    onClick = { onGenreClick(genre) }
-                )
-            }
-            if (row.size == 1) {
-                Spacer(modifier = Modifier.weight(1f))
-            }
+            Icon(
+                imageVector = IcMagnifyingGlass,
+                contentDescription = null,
+                tint = BlexsyColors.TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = item,
+                style = BlexsyTypography.Body,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 /**
- * Renders every type YouTube Music returned, in the order its shelves arrived. Nothing is filtered,
- * re-ranked or second-guessed on the client: if the server sent it, the list shows it.
+ * Renders the search shelves: matching artists first, then the songs. Album and playlist
+ * shelves are not part of search — the catalog drops them before they reach the UI.
  */
 internal fun LazyListScope.searchResultsSection(
     query: String,
@@ -177,8 +174,6 @@ internal fun LazyListScope.searchResultsSection(
     onPlay: (Track, List<Track>) -> Unit,
     onToggleFavorite: (Track) -> Unit,
     onOpenArtist: (String) -> Unit,
-    onOpenAlbum: (String) -> Unit,
-    onOpenPlaylist: (GenrePlaylist) -> Unit,
     onTrackOptions: (Track, List<Track>) -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit
@@ -229,32 +224,6 @@ internal fun LazyListScope.searchResultsSection(
                 image = artist.image,
                 circle = true,
                 onClick = { artist.channelId?.let(onOpenArtist) }
-            )
-        }
-    }
-
-    if (loaded.albums.isNotEmpty()) {
-        item { SearchSectionTitle(R.string.search_albums) }
-        items(loaded.albums, key = { "album:${it.id}" }) { album ->
-            SearchResultRow(
-                title = album.name,
-                subtitle = listOfNotNull(album.artist, album.year).joinToString(" • "),
-                image = album.image,
-                circle = false,
-                onClick = { onOpenAlbum(album.id) }
-            )
-        }
-    }
-
-    if (loaded.playlists.isNotEmpty()) {
-        item { SearchSectionTitle(R.string.search_playlists) }
-        items(loaded.playlists, key = { "playlist:${it.id}" }) { playlist ->
-            SearchResultRow(
-                title = playlist.name,
-                subtitle = stripHtml(playlist.description).takeIf { it.isNotBlank() },
-                image = playlist.image,
-                circle = false,
-                onClick = { onOpenPlaylist(playlist) }
             )
         }
     }
@@ -343,7 +312,7 @@ private fun SearchResultRow(
             }
         }
         Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+            imageVector = IcCaretRight,
             contentDescription = null,
             tint = BlexsyColors.TextTertiary,
             modifier = Modifier.size(14.dp)
@@ -381,7 +350,7 @@ private fun SearchResultsFooter(
                 onClick = onLoadMore,
                 variant = ButtonVariant.Secondary,
                 size = ButtonSize.Sm,
-                leadingIcon = Icons.Rounded.Refresh
+                leadingIcon = IcRefresh
             )
 
             // A refresh has no next page yet — saying "that's everything" here would be a lie.
@@ -410,7 +379,7 @@ private fun SearchFailureState(message: String?, onRetry: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Rounded.CloudOff,
+                imageVector = IcCloudSlash,
                 contentDescription = null,
                 tint = BlexsyColors.TextTertiary,
                 modifier = Modifier.size(36.dp)
@@ -437,7 +406,7 @@ private fun SearchFailureState(message: String?, onRetry: () -> Unit) {
                 onClick = onRetry,
                 variant = ButtonVariant.Secondary,
                 size = ButtonSize.Sm,
-                leadingIcon = Icons.Rounded.Refresh
+                leadingIcon = IcRefresh
             )
         }
     }
@@ -459,7 +428,7 @@ internal fun SearchBarButton(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Rounded.Search,
+            imageVector = IcMagnifyingGlass,
             contentDescription = null,
             tint = BlexsyColors.TextSecondary,
             modifier = Modifier.size(20.dp)
@@ -475,11 +444,130 @@ internal fun SearchBarButton(
     }
 }
 
+internal fun LazyListScope.recentPlayedSection(
+    recentTracks: List<Track>,
+    activeTrack: Track?,
+    favorites: List<Track>,
+    onPlay: (Track, List<Track>) -> Unit,
+    onToggleFavorite: (Track) -> Unit,
+    onOpenArtist: (String) -> Unit,
+    onTrackOptions: (Track, List<Track>) -> Unit
+) {
+    if (recentTracks.isEmpty()) return
+
+    item {
+        Text(
+            text = stringResource(R.string.search_recent_played),
+            style = BlexsyTypography.SectionTitle.copy(fontSize = 18.sp),
+            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp)
+        )
+    }
+
+    itemsIndexed(recentTracks, key = { index, track -> "recent:${track.id}:$index" }) { index, track ->
+        TrackTile(
+            track = track,
+            index = index,
+            showArtwork = true,
+            showRank = false,
+            isPlayingThis = activeTrack?.id == track.id,
+            isFavorite = favorites.any { it.id == track.id },
+            onClick = { onPlay(track, recentTracks) },
+            onToggleFavorite = { onToggleFavorite(track) },
+            onOpenArtist = onOpenArtist,
+            onMore = { onTrackOptions(track, recentTracks) }
+        )
+    }
+}
+
+internal fun LazyListScope.browseCategoriesSection(
+    categories: List<SpotifyBrowseCategory>,
+    onCategoryClick: (SpotifyBrowseCategory) -> Unit
+) {
+    if (categories.isEmpty()) return
+
+    item {
+        Text(
+            text = stringResource(R.string.search_title_browse_all),
+            style = BlexsyTypography.SectionTitle.copy(fontSize = 18.sp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp)
+        )
+    }
+
+    items(categories.chunked(2), key = { pair -> pair.joinToString("-") { it.id } }) { row ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            for (category in row) {
+                BrowseCategoryCard(
+                    category = category,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onCategoryClick(category) }
+                )
+            }
+            if (row.size == 1) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+internal fun BrowseCategoryCard(
+    category: SpotifyBrowseCategory,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val backgroundColor = remember(category.color) {
+        category.color?.let {
+            runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull()
+        } ?: Color(0xFF282828)
+    }
+
+    Box(
+        modifier = modifier
+            .height(98.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+    ) {
+        if (!category.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = category.imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(64.dp)
+                    .offset(x = 16.dp, y = 6.dp)
+                    .rotate(24f)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+        }
+        Text(
+            text = category.title,
+            style = BlexsyTypography.Hero.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            ),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.72f)
+                .padding(12.dp)
+        )
+    }
+}
+
 /** Editable search field used on the full-screen search page. */
 @Composable
 internal fun SearchField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     onClear: () -> Unit,
     onSearch: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -501,13 +589,13 @@ internal fun SearchField(
         }),
         leadingIcon = {
             Icon(
-                imageVector = Icons.Rounded.Search,
+                imageVector = IcMagnifyingGlass,
                 contentDescription = null,
                 tint = BlexsyColors.TextSecondary,
                 modifier = Modifier.size(20.dp)
             )
         },
-        trailingContent = if (value.isNotEmpty()) {
+        trailingContent = if (value.text.isNotEmpty()) {
             {
                 Box(
                     modifier = Modifier
@@ -516,7 +604,7 @@ internal fun SearchField(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Close,
+                        imageVector = IcClose,
                         contentDescription = stringResource(R.string.a11y_clear),
                         tint = BlexsyColors.TextSecondary,
                         modifier = Modifier.size(16.dp)
@@ -524,5 +612,31 @@ internal fun SearchField(
                 }
             }
         } else null
+    )
+}
+
+/** Editable search field used on the full-screen search page. */
+@Composable
+internal fun SearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onClear: () -> Unit,
+    onSearch: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null
+) {
+    var tfv by remember(value) {
+        mutableStateOf(TextFieldValue(text = value, selection = androidx.compose.ui.text.TextRange(value.length)))
+    }
+    SearchField(
+        value = tfv,
+        onValueChange = {
+            tfv = it
+            onValueChange(it.text)
+        },
+        onClear = onClear,
+        onSearch = onSearch,
+        modifier = modifier,
+        focusRequester = focusRequester
     )
 }

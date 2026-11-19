@@ -41,37 +41,44 @@ data class Track(
         }
 
     /**
-     * Artist references as (id, name) pairs. Ids are only ever real YouTube Music channel ids;
-     * when a track has no channel id the name is still returned as a label, but [artistRefs]
-     * keeps the id equal to the name, so callers must check [primaryArtistRef] before opening
-     * an artist page.
+     * Artist references as (id, name) pairs. Ids are YouTube Music channel ids or Spotify artist
+     * ids; when a track has no catalog id the name is still returned as a label, so callers must
+     * check [primaryArtistRef] before opening an artist page.
      */
     val artistRefs: List<Pair<String, String>>
         get() {
             val names = artist.split(",").map { it.trim() }.filter { it.isNotBlank() }
-            val channelIds = artistIds.filter { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
-            if (channelIds.size > 1) {
-                return channelIds.mapIndexed { index, id ->
-                    id to (names.getOrNull(index) ?: id)
-                }
+            if (names.isEmpty()) return artistIds.filter { it.isCatalogArtistId() }.map { it to it }
+            // Ids and names come from the same ordered list, so pair them by index without
+            // filtering (filtering would shift the ids). A name without an id keeps the name as
+            // its placeholder; callers resolve it before navigating.
+            return names.mapIndexed { index, name ->
+                (artistIds.getOrNull(index)?.takeIf { it.isCatalogArtistId() } ?: name) to name
             }
-            if (names.size > 1) {
-                return names.mapIndexed { index, name ->
-                    (channelIds.getOrNull(index) ?: name) to name
-                }
-            }
-            val singleId = primaryArtistRef
-            val singleName = names.firstOrNull() ?: artist
-            return if (singleId != null) listOf(singleId to singleName) else emptyList()
         }
 
-    /** A real YouTube Music channel id for the primary artist, or null when unknown. */
+    /** A real YouTube Music channel id or Spotify artist id for the primary artist. */
     val primaryArtistRef: String?
-        get() = artistIds.firstOrNull { it.startsWith("UC") || it.startsWith("FEmusic_artist") }
+        get() = artistIds.firstOrNull { it.isCatalogArtistId() }
 
     val highResImage: String?
         get() = image.toHighResArtwork()
 }
+
+/**
+ * Stamps a chart rank onto a track for list rendering: [rank] is the position, [rankStatus] the
+ * up/down/new marker. Both are YouTube's own fields, so a Spotify chart entry needs them written
+ * in. Tracks without a rank are returned untouched.
+ */
+internal fun Track.withChartRank(rank: ChartRank): Track = copy(
+    rank = rank.position,
+    rankStatus = when {
+        rank.isNew -> "new"
+        (rank.delta ?: 0) > 0 -> "up"
+        (rank.delta ?: 0) < 0 -> "down"
+        else -> "same"
+    }
+)
 
 /**
  * YouTube/Google artwork URLs carry their size in the query string, so asking for a larger

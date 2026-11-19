@@ -844,14 +844,6 @@ class BlexsyLogicTest {
     }
 
     @Test
-    fun testGenreDetailScreenModel() {
-        val detail = com.blek.blexsy.ui.BlexsyScreen.GenreDetail(id = "pop", name = "Pop", image = "https://example.com/pop.jpg")
-        assertEquals("pop", detail.id)
-        assertEquals("Pop", detail.name)
-        assertEquals("https://example.com/pop.jpg", detail.image)
-    }
-
-    @Test
     fun testLauncherAliasOptions() {
         val aliases = com.blek.blexsy.ui.LauncherAliasManager.ALIASES
         assertTrue(aliases.any { it.label == "Blexsy" && it.id == "blexsy" })
@@ -944,89 +936,6 @@ class BlexsyLogicTest {
         assertEquals(original.playlists.size, decoded.playlists.size)
         assertEquals(original.similarArtists.size, decoded.similarArtists.size)
         assertEquals(original.verified, decoded.verified)
-
-        val db = com.blek.blexsy.data.ArtistDatabase(null)
-        assertNull(db.get("Coldplay"))
-        db.put(original)
-    }
-
-    @Test
-    fun testSpotifyChartAndNewReleasesParsingAndTtl() {
-        val ttlOneDay = 24 * 60 * 60_000L
-        assertEquals(86_400_000L, ttlOneDay)
-
-        val sampleNextData = """
-            {
-              "props": {
-                "pageProps": {
-                  "state": {
-                    "data": {
-                      "entity": {
-                        "name": "Top 50 - Indonesia",
-                        "coverArt": {
-                          "sources": [{ "url": "https://charts-images.scdn.co/cover.jpg" }]
-                        },
-                        "trackList": [
-                          {
-                            "uri": "spotify:track:4xoY4lZNoTjEuHsSmhgF1G",
-                            "title": "Sesi Potret",
-                            "subtitle": "eńau, Ari Lesmana",
-                            "duration": 243000
-                          },
-                          {
-                            "uri": "spotify:track:1sVQuuvFDKu6vklPVeiUXT",
-                            "title": "Dunia Yang Nanti",
-                            "subtitle": "Raim Laode",
-                            "duration": 202100
-                          }
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-        """.trimIndent()
-
-        val json = Json { ignoreUnknownKeys = true }
-        val root = json.parseToJsonElement(sampleNextData).jsonObject
-        val entity = root["props"]?.jsonObject
-            ?.get("pageProps")?.jsonObject
-            ?.get("state")?.jsonObject
-            ?.get("data")?.jsonObject
-            ?.get("entity")?.jsonObject
-        assertNotNull(entity)
-
-        val trackList = entity["trackList"]?.jsonArray
-        assertNotNull(trackList)
-        assertEquals(2, trackList.size)
-
-        val tracks = trackList.mapIndexed { index, el ->
-            val item = el.jsonObject
-            val uri = item["uri"]?.jsonPrimitive?.content ?: ""
-            val id = uri.substringAfterLast(":")
-            val title = item["title"]?.jsonPrimitive?.content ?: ""
-            val artist = item["subtitle"]?.jsonPrimitive?.content ?: ""
-            Track(id = id, title = title, artist = artist, rank = index + 1)
-        }
-
-        assertEquals(2, tracks.size)
-        assertEquals("4xoY4lZNoTjEuHsSmhgF1G", tracks[0].id)
-        assertEquals("Sesi Potret", tracks[0].title)
-        assertEquals(1, tracks[0].rank)
-
-        val newReleaseAlbums = tracks.map { track ->
-            com.blek.blexsy.model.AlbumSummary(
-                id = track.id,
-                name = track.title,
-                artist = track.artist,
-                year = "NEW",
-                type = "SINGLE"
-            )
-        }
-        assertEquals(2, newReleaseAlbums.size)
-        assertEquals("Sesi Potret", newReleaseAlbums[0].name)
-        assertEquals("NEW", newReleaseAlbums[0].year)
     }
 
     @Test
@@ -1124,10 +1033,4 @@ class BlexsyLogicTest {
         assertEquals(listOf("Coldplay" to "Coldplay", "BTS" to "BTS"), multiArtistCommaOnly.artistRefs)
     }
 
-    @Test
-    fun testInnerTubeSearch() = kotlinx.coroutines.runBlocking {
-        val result = com.blek.blexsy.data.InnerTubeService.search("bmth", limit = 10)
-        assertTrue(result.tracks.isNotEmpty(), "Tracks should not be empty")
-        assertTrue(result.tracks.any { it.title.isNotBlank() })
-    }
 }

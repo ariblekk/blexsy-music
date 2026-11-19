@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -227,7 +223,7 @@ fun AlbumDetailScreen(
                                             player.play(a.tracks.first(), a.tracks)
                                         }
                                     },
-                                    leadingIcon = if (isAlbumPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    leadingIcon = if (isAlbumPlaying) IcPause else IcPlay,
                                     variant = ButtonVariant.Primary,
                                     size = ButtonSize.Md,
                                     modifier = Modifier.widthIn(min = 160.dp, max = 220.dp)
@@ -271,7 +267,7 @@ fun AlbumDetailScreen(
                     modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        imageVector = IcArrowLeft,
                         contentDescription = stringResource(R.string.action_back),
                         tint = BlexsyColors.TextPrimary,
                         modifier = Modifier.size(24.dp)

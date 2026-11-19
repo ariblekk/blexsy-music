@@ -69,10 +69,10 @@ class MainActivity : ComponentActivity() {
         val savedName = prefs.getString("user_name", null)
 
         val api = BlexsyApiClient(
-            cache = ApiCache(this),
-            artistDb = com.blek.blexsy.data.ArtistDatabase(this)
+            cache = ApiCache(this)
         )
-        // A stable anonymous visitor identity makes the YouTube Music home feed personal.
+        // A stable anonymous visitor identity personalises the YouTube home feed; audio streams
+        // are the only other thing YouTube is used for.
         com.blek.blexsy.data.InnerTubeService.init(this)
 
         // Fully local library: likes, playlists and recent spins live on the device only.

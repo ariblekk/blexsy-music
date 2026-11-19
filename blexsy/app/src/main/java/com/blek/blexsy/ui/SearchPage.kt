@@ -16,21 +16,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.blek.blexsy.model.Genre
-import com.blek.blexsy.model.GenrePlaylist
 import com.blek.blexsy.model.Track
 
 /**
@@ -42,25 +49,61 @@ internal fun SearchPage(
     state: BlexsySearchState,
     contentBottomPadding: Dp,
     isLoading: Boolean,
-    genres: List<Genre>,
+    recentTracks: List<Track> = emptyList(),
     favorites: List<Track>,
     activeTrack: Track?,
     onClose: () -> Unit,
-    onGenreClick: (Genre) -> Unit,
     onPlay: (Track, List<Track>) -> Unit,
     onToggleFavorite: (Track) -> Unit,
     onOpenArtist: (String) -> Unit,
-    onOpenAlbum: (String) -> Unit,
-    onOpenPlaylist: (GenrePlaylist) -> Unit,
     onTrackOptions: (Track, List<Track>) -> Unit,
     bottomBar: @Composable () -> Unit = {}
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = state.query,
+                selection = TextRange(state.query.length)
+            )
+        )
+    }
+
+    LaunchedEffect(state.query) {
+        if (state.query != textFieldValue.text) {
+            textFieldValue = TextFieldValue(
+                text = state.query,
+                selection = TextRange(state.query.length)
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
         keyboard?.show()
+    }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
+            focusManager.clearFocus()
+            keyboard?.hide()
+        }
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.Drag && (available.y != 0f || available.x != 0f)) {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                }
+                return Offset.Zero
+            }
+        }
     }
 
     Column(
@@ -81,7 +124,7 @@ internal fun SearchPage(
                 modifier = Modifier.size(44.dp)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    imageVector = IcArrowLeft,
                     contentDescription = stringResource(R.string.action_back),
                     tint = BlexsyColors.TextPrimary,
                     modifier = Modifier.size(24.dp)
@@ -89,10 +132,16 @@ internal fun SearchPage(
             }
             Spacer(modifier = Modifier.width(4.dp))
             SearchField(
-                value = state.query,
-                onValueChange = state::submit,
-                onClear = state::clearQuery,
-                onSearch = { state.submit(state.query, immediate = true) },
+                value = textFieldValue,
+                onValueChange = { newTfv ->
+                    textFieldValue = newTfv
+                    state.submit(newTfv.text)
+                },
+                onClear = {
+                    textFieldValue = TextFieldValue("", TextRange.Zero)
+                    state.clearQuery()
+                },
+                onSearch = { state.submit(textFieldValue.text, immediate = true) },
                 modifier = Modifier.weight(1f),
                 focusRequester = focusRequester
             )
@@ -100,17 +149,34 @@ internal fun SearchPage(
 
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(bottom = contentBottomPadding)
             ) {
                 if (state.query.isBlank()) {
-                    searchHistorySection(
-                        history = state.history,
-                        onHistoryClick = { state.submit(it, immediate = true) },
-                        onClearHistory = state::clearHistory,
-                        onRemoveHistory = state::removeHistory
+                    recentPlayedSection(
+                        recentTracks = recentTracks,
+                        activeTrack = activeTrack,
+                        favorites = favorites,
+                        onPlay = onPlay,
+                        onToggleFavorite = onToggleFavorite,
+                        onOpenArtist = onOpenArtist,
+                        onTrackOptions = onTrackOptions
                     )
                 } else {
+                    // Suggestions are the first thing under the field, tap = committed search.
+                    searchSuggestionsSection(
+                        suggestions = state.suggestions,
+                        onSuggestionClick = { suggestion ->
+                            textFieldValue = TextFieldValue(
+                                text = suggestion,
+                                selection = TextRange(suggestion.length)
+                            )
+                            state.submit(suggestion, immediate = true)
+                        }
+                    )
                     searchResultsSection(
                         query = state.query,
                         uiState = state.uiState,
@@ -119,8 +185,6 @@ internal fun SearchPage(
                         onPlay = onPlay,
                         onToggleFavorite = onToggleFavorite,
                         onOpenArtist = onOpenArtist,
-                        onOpenAlbum = onOpenAlbum,
-                        onOpenPlaylist = onOpenPlaylist,
                         onTrackOptions = onTrackOptions,
                         onRetry = state::retry,
                         onLoadMore = state::loadMore

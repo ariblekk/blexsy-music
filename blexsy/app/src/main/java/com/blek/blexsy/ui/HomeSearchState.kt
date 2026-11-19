@@ -13,7 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.SearchResult
-import com.blek.blexsy.model.AlbumSummary
 import com.blek.blexsy.model.ArtistSummary
 import com.blek.blexsy.model.GenrePlaylist
 import com.blek.blexsy.model.Track
@@ -24,10 +23,12 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -38,8 +39,17 @@ private const val PREFS_SEARCH = "blexsy_search"
 private const val KEY_HISTORY = "recent_queries"
 private const val TAG = "BlexsySearch"
 
-/** One character is enough to search: results start arriving on the first keystroke. */
-private const val MIN_QUERY_LENGTH = 1
+/** Two characters before a request: a single letter matches everything and costs a round trip. */
+private const val MIN_QUERY_LENGTH = 2
+
+/**
+ * Typing is debounced so a burst of keystrokes is one request instead of one per letter. A
+ * committed search (keyboard Search, recent-search tap, retry) skips the wait.
+ */
+private const val TYPING_DEBOUNCE_MS = 300L
+
+/** Autocomplete suggestions come from locally known names only, so they never hit the network. */
+private const val SUGGESTION_LIMIT = 5
 
 /** History entries are sticky and user-visible, so a single letter is not worth keeping. */
 private const val MIN_HISTORY_LENGTH = 2
@@ -61,11 +71,10 @@ internal sealed interface SearchUiState {
     data class Loaded(
         val tracks: List<Track> = emptyList(),
         val artists: List<ArtistSummary> = emptyList(),
-        val albums: List<AlbumSummary> = emptyList(),
         val playlists: List<GenrePlaylist> = emptyList(),
         /** Non-null while another page can be fetched; drives the footer trigger. */
         val nextOffset: Int? = null,
-        /** Opaque YouTube Music continuation token for the next page. */
+        /** Opaque token for the next page; Spotify offset for search. */
         val nextContinuation: String? = null,
         /** True while the *next* page is in flight; the list stays visible underneath. */
         val appending: Boolean = false,
@@ -78,7 +87,7 @@ internal sealed interface SearchUiState {
         val refreshing: Boolean = false
     ) : SearchUiState {
         val isEmpty: Boolean
-            get() = tracks.isEmpty() && artists.isEmpty() && albums.isEmpty() && playlists.isEmpty()
+            get() = tracks.isEmpty() && artists.isEmpty() && playlists.isEmpty()
     }
 
     data class Failed(val message: String? = null) : SearchUiState
@@ -88,6 +97,26 @@ internal sealed interface SearchUiState {
 private sealed interface PageOutcome {
     data class Success(val result: SearchResult) : PageOutcome
     data class Failure(val message: String?) : PageOutcome
+}
+
+/** One keystroke or committed search. [immediate] bypasses the typing debounce. */
+private data class QueryInput(val text: String, val immediate: Boolean = false)
+
+/**
+ * Prefix matches from names the app already knows: past queries, queries whose results are
+ * cached, and the artist/song names already on screen. Pure list work, no request.
+ */
+internal fun suggestQueries(
+    query: String,
+    known: List<String>,
+    limit: Int = SUGGESTION_LIMIT
+): List<String> {
+    val q = query.trim()
+    if (q.length < MIN_QUERY_LENGTH) return emptyList()
+    return known
+        .filter { it.length > q.length && it.startsWith(q, ignoreCase = true) }
+        .distinctBy { it.lowercase() }
+        .take(limit)
 }
 
 /**
@@ -134,10 +163,42 @@ internal class BlexsySearchState(
     /** Continuations already requested per query, so a stuck footer cannot re-request a page. */
     private val requestedContinuations = mutableMapOf<String, MutableSet<String>>()
 
-    private val inputs = MutableSharedFlow<String>(
+    private val inputs = MutableSharedFlow<QueryInput>(
         extraBufferCapacity = 16,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
+
+    private var remoteSuggestions by mutableStateOf<List<String>>(emptyList())
+
+    /**
+     * Autocomplete for what is being typed: combines Spotify remote suggestions with locally
+     * known names (past queries, cached queries, names already on screen).
+     */
+    val suggestions: List<String>
+        get() {
+            val loaded = uiState as? SearchUiState.Loaded
+            // Names already rendered as result rows are dropped so nothing shows twice.
+            val shown = buildSet {
+                loaded?.artists?.forEach { add(it.name.lowercase()) }
+                loaded?.tracks?.forEach { add(it.displayTitle.lowercase()) }
+            }
+            val local = suggestQueries(
+                query = query,
+                known = buildList {
+                    loaded?.artists?.forEach { add(it.name) }
+                    loaded?.tracks?.forEach { add(it.displayTitle) }
+                    addAll(cache.keys)
+                    addAll(history)
+                }
+            )
+            val trimmedQ = query.trim()
+            return (remoteSuggestions + local)
+                .distinctBy { it.lowercase() }
+                .filterNot { item ->
+                    item.lowercase() in shown || item.trim().equals(trimmedQ, ignoreCase = true)
+                }
+                .take(SUGGESTION_LIMIT)
+        }
 
     init {
         inputs
@@ -147,13 +208,29 @@ internal class BlexsySearchState(
             //
             // A failure is the exception — that query is not "already shown" in any useful sense, so
             // pressing Search (or the retry button) must actually re-run it.
-            .distinctUntilChanged { old, new -> old == new && uiState !is SearchUiState.Failed }
-            // No debounce: every keystroke is a request. `flatMapLatest` cancels whatever is still
-            // in flight, so the cost of a burst is a few aborted requests, not a queue of stale
-            // results. A debounce would be worse than useless here — it resets on each keypress,
-            // so a fast typist would never trigger a search at all.
-            .flatMapLatest { q -> searchFlow(q) }
+            .distinctUntilChanged { old, new -> old.text == new.text && uiState !is SearchUiState.Failed }
+            // Typing collapses into a single request; a committed search goes through at once.
+            // `flatMapLatest` still cancels whatever is in flight, so a stale response can never
+            // land after a newer one.
+            .debounce { if (it.immediate) 0L else TYPING_DEBOUNCE_MS }
+            .flatMapLatest { input -> searchFlow(input.text) }
             .onEach { uiState = it }
+            .launchIn(scope)
+
+        inputs
+            .map { it.text.trim() }
+            .distinctUntilChanged()
+            .debounce(180L)
+            .flatMapLatest { q ->
+                flow {
+                    if (q.length >= MIN_QUERY_LENGTH) {
+                        emit(api.searchSuggest(q))
+                    } else {
+                        emit(emptyList())
+                    }
+                }
+            }
+            .onEach { remoteSuggestions = it }
             .launchIn(scope)
     }
 
@@ -201,7 +278,6 @@ internal class BlexsySearchState(
                 val loaded = SearchUiState.Loaded(
                     tracks = result.tracks,
                     artists = result.artists,
-                    albums = result.albums,
                     playlists = result.playlists,
                     nextOffset = result.continuation?.let { 1 },
                     nextContinuation = result.continuation
@@ -263,9 +339,8 @@ internal class BlexsySearchState(
                     val merged = (visible.tracks + outcome.result.tracks).distinctBy { it.id }
                     val updated = visible.copy(
                         tracks = merged,
-                        artists = (visible.artists + outcome.result.artists).distinctBy { it.id },
-                        albums = (visible.albums + outcome.result.albums).distinctBy { it.id },
-                        playlists = (visible.playlists + outcome.result.playlists).distinctBy { it.id },
+                        // Artist stays from the first page: search shows one,
+                        // and continuation pages only extend the track list.
                         nextOffset = outcome.result.continuation?.let { 1 },
                         nextContinuation = outcome.result.continuation,
                         appending = false,
@@ -283,13 +358,13 @@ internal class BlexsySearchState(
         val q = query.trim()
         if (q.length < MIN_QUERY_LENGTH) return
         cache.remove(q)
-        inputs.tryEmit(q)
+        inputs.tryEmit(QueryInput(q, immediate = true))
     }
 
     /**
      * Records [term] as something the user deliberately searched for. Kept separate from the fetch
-     * path: with a search firing on every keystroke, recording there would fill the list with
-     * every prefix the user typed through — `b`, `bm`, `bmt`, `bmth`.
+     * path: with a search firing while typing, recording there would fill the list with every
+     * prefix the user typed through — `b`, `bm`, `bmt`, `bmth`.
      */
     private fun recordHistory(term: String) {
         if (term.length < MIN_HISTORY_LENGTH) return
@@ -307,10 +382,13 @@ internal class BlexsySearchState(
     fun submit(q: String, immediate: Boolean = false) {
         query = q
         if (immediate) recordHistory(q.trim())
-        inputs.tryEmit(q)
+        inputs.tryEmit(QueryInput(q, immediate))
     }
 
-    fun clearQuery() = submit("")
+    fun clearQuery() {
+        remoteSuggestions = emptyList()
+        submit("")
+    }
 
     fun removeHistory(item: String) {
         history.remove(item)

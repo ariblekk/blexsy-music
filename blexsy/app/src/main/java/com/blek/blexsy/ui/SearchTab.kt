@@ -1,5 +1,6 @@
 package com.blek.blexsy.ui
 
+import com.blek.blexsy.data.SpotifyBrowseCategory
 import com.blek.blexsy.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -21,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.blek.blexsy.model.Genre
 
 /**
  * Search tab in display mode, matching Spotify: the tab itself is just a showcase of
@@ -33,13 +33,13 @@ import com.blek.blexsy.model.Genre
 internal fun SearchTab(
     contentBottomPadding: Dp,
     searchHistory: List<String>,
+    categories: List<SpotifyBrowseCategory> = emptyList(),
     isLoading: Boolean,
-    genres: List<Genre>,
     onOpenSearch: () -> Unit,
     onHistoryClick: (String) -> Unit,
+    onCategoryClick: (SpotifyBrowseCategory) -> Unit = {},
     onClearHistory: () -> Unit,
-    onRemoveHistory: (String) -> Unit = {},
-    onGenreClick: (Genre) -> Unit
+    onRemoveHistory: (String) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -60,7 +60,7 @@ internal fun SearchTab(
                 Text(
                     text = stringResource(R.string.search_title),
                     style = BlexsyTypography.SectionTitle.copy(
-                        fontFamily = DeezerExtraBoldFont,
+                        fontFamily = HeadingFont,
                         fontSize = 24.sp,
                         lineHeight = 32.sp
                     ),
@@ -80,18 +80,20 @@ internal fun SearchTab(
             }
         }
 
-        if (isLoading) {
+        if (isLoading && categories.isEmpty()) {
             item { BrowseSkeleton() }
         } else {
-            searchHistorySection(
-                history = searchHistory,
-                onHistoryClick = onHistoryClick,
-                onClearHistory = onClearHistory,
-                onRemoveHistory = onRemoveHistory
-            )
-            browseAllSection(
-                genres = genres,
-                onGenreClick = onGenreClick
+            if (searchHistory.isNotEmpty()) {
+                searchHistorySection(
+                    history = searchHistory,
+                    onHistoryClick = onHistoryClick,
+                    onClearHistory = onClearHistory,
+                    onRemoveHistory = onRemoveHistory
+                )
+            }
+            browseCategoriesSection(
+                categories = categories,
+                onCategoryClick = onCategoryClick
             )
         }
 

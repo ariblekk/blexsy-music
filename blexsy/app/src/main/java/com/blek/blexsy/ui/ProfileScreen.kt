@@ -30,15 +30,6 @@ import com.blek.blexsy.player.BlexsyAudioPlayer
 import kotlinx.coroutines.launch
 import com.blek.blexsy.R
 import androidx.compose.ui.res.stringResource
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.automirrored.rounded.Login
-import androidx.compose.material.icons.automirrored.rounded.Logout
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -54,6 +45,7 @@ fun ProfileScreen(
     onOpenLogin: (() -> Unit)? = null,
     onOpenPlaylist: ((Playlist) -> Unit)? = null,
     onTrackOptions: ((Track, List<Track>) -> Unit)? = null,
+    onOpenArtist: ((String) -> Unit)? = null,
     embedded: Boolean = false,
     embeddedTopPadding: Dp = 0.dp,
     embeddedBottomPadding: Dp = 0.dp,
@@ -136,7 +128,7 @@ fun ProfileScreen(
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Rounded.Login,
+                                        IcSignIn,
                                         contentDescription = stringResource(R.string.profile_lock_in),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(20.dp)
@@ -148,7 +140,7 @@ fun ProfileScreen(
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
-                                    Icons.Rounded.MoreVert,
+                                    IcDotsThreeVertical,
                                     contentDescription = stringResource(R.string.a11y_more_options),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(22.dp)
@@ -377,7 +369,7 @@ fun ProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Rounded.History, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
+                                        Icon(IcHistory, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
                                         Spacer(modifier = Modifier.height(10.dp))
                                         Text(stringResource(R.string.profile_spins_empty_title), style = BlexsyTypography.SectionTitle)
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -410,6 +402,7 @@ fun ProfileScreen(
                                         track = track,
                                         index = index,
                                         isPlayingThis = activeTrack?.id == track.id,
+                                        onOpenArtist = onOpenArtist,
                                         onClick = {
                                             player.play(track, recentTracks)
                                         },
@@ -428,7 +421,7 @@ fun ProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Rounded.FavoriteBorder, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
+                                        Icon(IcHeartOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
                                         Spacer(modifier = Modifier.height(10.dp))
                                         Text(stringResource(R.string.profile_hearts_empty_title), style = BlexsyTypography.SectionTitle)
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -446,6 +439,7 @@ fun ProfileScreen(
                                     index = index,
                                     isPlayingThis = activeTrack?.id == track.id,
                                     isFavorite = true,
+                                    onOpenArtist = onOpenArtist,
                                     onClick = {
                                         player.play(track, favoriteTracks)
                                     },
@@ -464,7 +458,7 @@ fun ProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Rounded.LibraryMusic, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
+                                        Icon(IcMusicNotes, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
                                         Spacer(modifier = Modifier.height(10.dp))
                                         Text(stringResource(R.string.profile_crates_empty_title), style = BlexsyTypography.SectionTitle)
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -519,7 +513,7 @@ fun ProfileScreen(
                 if (onOpenSettings != null) {
                     ActionSheetItem(
                         label = stringResource(R.string.profile_more_settings),
-                        icon = Icons.Rounded.Settings,
+                        icon = IcGearSix,
                         onClick = {
                             showMoreSheet = false
                             onOpenSettings()
@@ -529,7 +523,7 @@ fun ProfileScreen(
                 if (onLogout != null) {
                     ActionSheetItem(
                         label = stringResource(R.string.profile_more_logout),
-                        icon = Icons.AutoMirrored.Rounded.Logout,
+                        icon = IcSignOut,
                         tint = BlexsyColors.Danger,
                         onClick = {
                             showMoreSheet = false
@@ -655,6 +649,7 @@ private fun ProfileStatItem(
         Text(
             text = formatStatCount(count),
             style = BlexsyTypography.Hero.copy(
+                fontFamily = MonoFont,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold
             ),

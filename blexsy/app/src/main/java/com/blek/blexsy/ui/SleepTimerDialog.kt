@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.TimerOff
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -130,15 +127,22 @@ internal fun SleepTimerDialog(
                             Text(
                                 text = label,
                                 style = if (isSelected) {
-                                    BlexsyTypography.TitleActive.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                    BlexsyTypography.TitleActive.copy(
+                                        fontFamily = MonoFont,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 } else {
-                                    BlexsyTypography.Title.copy(fontSize = 15.sp)
+                                    BlexsyTypography.Title.copy(
+                                        fontFamily = MonoFont,
+                                        fontSize = 15.sp
+                                    )
                                 },
                                 color = if (isSelected) BlexsyColors.Primary else BlexsyColors.TextPrimary
                             )
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
+                                    imageVector = IcCheck,
                                     contentDescription = stringResource(R.string.a11y_selected),
                                     tint = BlexsyColors.Primary,
                                     modifier = Modifier.size(20.dp)
@@ -184,7 +188,7 @@ internal fun SleepTimerDialog(
                         )
                         if (isEndTrackSelected) {
                             Icon(
-                                imageVector = Icons.Rounded.Check,
+                                imageVector = IcCheck,
                                 contentDescription = stringResource(R.string.a11y_selected),
                                 tint = BlexsyColors.Primary,
                                 modifier = Modifier.size(20.dp)
@@ -214,7 +218,7 @@ internal fun SleepTimerDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.TimerOff,
+                            imageVector = IcTimerOff,
                             contentDescription = null,
                             tint = BlexsyColors.Danger,
                             modifier = Modifier.size(22.dp)

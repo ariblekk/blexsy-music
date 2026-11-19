@@ -62,27 +62,6 @@ import com.blek.blexsy.model.toHighResArtwork
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.ArrowDropUp
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Search
 
 fun getBlexsyDateline(): String {
     val cal = java.util.Calendar.getInstance()
@@ -140,7 +119,7 @@ fun BrandMark(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Rounded.MusicNote,
+                imageVector = IcMusicNote,
                 contentDescription = null,
                 tint = Color.Black,
                 modifier = Modifier.size(20.dp)
@@ -219,7 +198,7 @@ fun Masthead(
                 modifier = Modifier.size(44.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Menu,
+                    imageVector = IcMenu,
                     contentDescription = stringResource(R.string.a11y_menu),
                     tint = BlexsyColors.TextPrimary,
                     modifier = Modifier.size(24.dp)
@@ -230,7 +209,7 @@ fun Masthead(
         Text(
             text = title,
             style = BlexsyTypography.SectionTitle.copy(
-                fontFamily = DeezerExtraBoldFont,
+                fontFamily = HeadingFont,
                 fontSize = 24.sp,
                 lineHeight = 30.sp
             ),
@@ -322,10 +301,10 @@ fun BottomNav(
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf(
-        Triple(stringResource(R.string.nav_home), Icons.Rounded.Home, Icons.Rounded.Home),
-        Triple(stringResource(R.string.nav_search), Icons.Rounded.Search, Icons.Rounded.Search),
-        Triple(stringResource(R.string.nav_library), Icons.Rounded.LibraryMusic, Icons.Rounded.LibraryMusic),
-        Triple(stringResource(R.string.nav_profile), Icons.Rounded.Person, Icons.Rounded.Person)
+        Triple(stringResource(R.string.nav_home), IcHouse, IcHouse),
+        Triple(stringResource(R.string.nav_search), IcMagnifyingGlass, IcMagnifyingGlass),
+        Triple(stringResource(R.string.nav_library), IcMusicNotes, IcMusicNotes),
+        Triple(stringResource(R.string.nav_profile), IcUser, IcUser)
     )
 
     val currentSelectedIndex by rememberUpdatedState(selectedIndex)
@@ -442,13 +421,14 @@ fun BottomNav(
     }
 }
 
-/** Spotify-style section header: bold title and a quiet "Show all" link. */
+/** Spotify-style section header: bold title, an optional quiet subtitle and a "Show all" link. */
 @Composable
 fun SectionHeader(
     kicker: String,
     title: String,
     action: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
+    subtitle: String? = null
 ) {
     Row(
         modifier = Modifier
@@ -456,13 +436,23 @@ fun SectionHeader(
             .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            style = BlexsyTypography.SectionTitle,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = BlexsyTypography.SectionTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = BlexsyTypography.Caption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
         if (action != null && onAction != null) {
             Spacer(modifier = Modifier.width(10.dp))
             val label = when (action.uppercase()) {
@@ -513,7 +503,7 @@ fun CoverImage(
             )
         } else {
             Icon(
-                imageVector = Icons.Rounded.MusicNote,
+                imageVector = IcMusicNote,
                 contentDescription = null,
                 tint = BlexsyColors.TextTertiary,
                 modifier = Modifier.size((size * 0.4).coerceIn(18.0, 44.0).dp)
@@ -568,7 +558,7 @@ fun PlayCircleButton(
             )
         } else {
             Icon(
-                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                imageVector = if (isPlaying) IcPause else IcPlay,
                 contentDescription = stringResource(if (isPlaying) R.string.player_pause else R.string.player_play),
                 modifier = Modifier.size((size * 0.5).dp)
             )
@@ -614,6 +604,7 @@ fun TrackCard(
                 ) {
                     Text(
                         text = rankNum.toString().padStart(2, '0'),
+                        fontFamily = MonoFont,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (rankNum == 1) BlexsyColors.Primary else Color.White
@@ -622,7 +613,7 @@ fun TrackCard(
                         "up" -> {
                             Spacer(modifier = Modifier.width(2.dp))
                             Icon(
-                                imageVector = Icons.Rounded.ArrowDropUp,
+                                imageVector = IcCaretUp,
                                 contentDescription = stringResource(R.string.a11y_rank_up),
                                 tint = BlexsyColors.Success,
                                 modifier = Modifier.size(12.dp)
@@ -631,7 +622,7 @@ fun TrackCard(
                         "down" -> {
                             Spacer(modifier = Modifier.width(2.dp))
                             Icon(
-                                imageVector = Icons.Rounded.ArrowDropDown,
+                                imageVector = IcCaretDown,
                                 contentDescription = stringResource(R.string.a11y_rank_down),
                                 tint = BlexsyColors.Danger,
                                 modifier = Modifier.size(12.dp)
@@ -774,6 +765,7 @@ fun TrackTile(
                 Text(
                     text = rankNumber.toString(),
                     style = BlexsyTypography.Subtitle.copy(
+                        fontFamily = MonoFont,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isPlayingThis) BlexsyColors.Primary else BlexsyColors.TextMuted
@@ -783,7 +775,7 @@ fun TrackTile(
                 when (track.rankStatus?.lowercase()) {
                     "up" -> {
                         Icon(
-                            imageVector = Icons.Rounded.ArrowDropUp,
+                            imageVector = IcCaretUp,
                             contentDescription = stringResource(R.string.a11y_rank_up),
                             tint = BlexsyColors.Success,
                             modifier = Modifier.size(14.dp)
@@ -791,7 +783,7 @@ fun TrackTile(
                     }
                     "down" -> {
                         Icon(
-                            imageVector = Icons.Rounded.ArrowDropDown,
+                            imageVector = IcCaretDown,
                             contentDescription = stringResource(R.string.a11y_rank_down),
                             tint = BlexsyColors.Danger,
                             modifier = Modifier.size(14.dp)
@@ -836,7 +828,7 @@ fun TrackTile(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isPlayingThis) {
                     Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
+                        imageVector = IcPlay,
                         contentDescription = stringResource(R.string.a11y_playing),
                         tint = BlexsyColors.Primary,
                         modifier = Modifier
@@ -845,6 +837,7 @@ fun TrackTile(
                     )
                 }
                 val artistRef = track.primaryArtistRef
+                    ?: track.artist.split(",", "&", "feat.", "ft.").firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
                 Text(
                     text = track.artist,
                     style = BlexsyTypography.Subtitle.copy(fontSize = 13.sp),
@@ -865,7 +858,7 @@ fun TrackTile(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    imageVector = if (isFavorite) IcHeartFilled else IcHeartOutline,
                     contentDescription = stringResource(if (isFavorite) R.string.player_remove_favorite else R.string.player_save_favorite),
                     tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextMuted,
                     modifier = Modifier.size(18.dp)
@@ -879,7 +872,7 @@ fun TrackTile(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreVert,
+                    imageVector = IcDotsThreeVertical,
                     contentDescription = stringResource(R.string.a11y_more_options),
                     tint = BlexsyColors.TextMuted,
                     modifier = Modifier.size(20.dp)
@@ -897,16 +890,17 @@ fun TrackTile(
 @Composable
 fun TrackOptionsSheet(
     track: Track,
-    isFavorite: Boolean,
+    isFavorite: Boolean = false,
     onDismiss: () -> Unit,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null,
+    onOpenAlbum: (() -> Unit)? = null,
+    onOpenArtist: (() -> Unit)? = null,
+    onStartRadio: (() -> Unit)? = null,
+    onViewCredits: (() -> Unit)? = null,
     onPlay: (() -> Unit)? = null,
     onPlayNext: (() -> Unit)? = null,
-    onAddToQueue: (() -> Unit)? = null,
-    onStartRadio: (() -> Unit)? = null,
-    onToggleFavorite: (() -> Unit)? = null,
-    onAddToPlaylist: (() -> Unit)? = null,
-    onOpenArtist: (() -> Unit)? = null,
-    onOpenAlbum: (() -> Unit)? = null
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -967,33 +961,17 @@ fun TrackOptionsSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            val playbackItems = listOfNotNull(
-                onPlay?.let { SheetOptionItem(Icons.Rounded.PlayArrow, stringResource(R.string.player_play)) { runThenDismiss(it) } },
-                onPlayNext?.let { SheetOptionItem(Icons.AutoMirrored.Rounded.PlaylistPlay, stringResource(R.string.player_queue_next)) { runThenDismiss(it) } },
-                onAddToQueue?.let { SheetOptionItem(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.player_toss_queue)) { runThenDismiss(it) } },
-                onAddToPlaylist?.let { SheetOptionItem(Icons.AutoMirrored.Rounded.PlaylistAdd, stringResource(R.string.player_add_to_playlist)) { runThenDismiss(it) } },
-                onStartRadio?.let { SheetOptionItem(Icons.Rounded.Radio, stringResource(R.string.player_start_radio)) { runThenDismiss(it) } },
-                onToggleFavorite?.let {
-                    SheetOptionItem(
-                        icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        label = if (isFavorite) stringResource(R.string.player_remove_favorite) else stringResource(R.string.player_save_favorite),
-                        tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextPrimary
-                    ) { runThenDismiss(it) }
-                }
+            val options = listOfNotNull(
+                onAddToPlaylist?.let { SheetOptionItem(IcPlaylist, stringResource(R.string.player_add_to_playlist)) { runThenDismiss(it) } },
+                onAddToQueue?.let { SheetOptionItem(IcQueue, stringResource(R.string.player_toss_queue)) { runThenDismiss(it) } },
+                onOpenAlbum?.let { SheetOptionItem(IcDisc, stringResource(R.string.player_view_album)) { runThenDismiss(it) } },
+                onOpenArtist?.let { SheetOptionItem(IcUser, stringResource(R.string.player_view_artist)) { runThenDismiss(it) } },
+                onStartRadio?.let { SheetOptionItem(IcRadio, stringResource(R.string.player_start_radio)) { runThenDismiss(it) } },
+                onViewCredits?.let { SheetOptionItem(IcInfo, stringResource(R.string.player_track_credits)) { runThenDismiss(it) } }
             )
 
-            if (playbackItems.isNotEmpty()) {
-                GroupedOptionCard(items = playbackItems)
-            }
-
-            val navItems = listOfNotNull(
-                onOpenArtist?.let { SheetOptionItem(Icons.Rounded.Person, stringResource(R.string.player_view_artist)) { runThenDismiss(it) } },
-                onOpenAlbum?.let { SheetOptionItem(Icons.Rounded.Album, stringResource(R.string.player_view_album)) { runThenDismiss(it) } }
-            )
-
-            if (navItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                GroupedOptionCard(items = navItems)
+            if (options.isNotEmpty()) {
+                GroupedOptionCard(items = options)
             }
         }
     }
@@ -1094,7 +1072,7 @@ fun AddToPlaylistSheet(
                             }
                             if (isAlreadyIn) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
+                                    imageVector = IcCheck,
                                     contentDescription = stringResource(R.string.playlist_track_added),
                                     tint = BlexsyColors.Primary,
                                     modifier = Modifier.size(20.dp)
@@ -1109,7 +1087,7 @@ fun AddToPlaylistSheet(
 
             BlexsyButton(
                 text = stringResource(R.string.playlist_create_new),
-                leadingIcon = Icons.Rounded.Add,
+                leadingIcon = IcPlus,
                 onClick = { runThenDismiss(onCreatePlaylist) },
                 variant = ButtonVariant.Secondary,
                 size = ButtonSize.Lg,
@@ -1165,7 +1143,7 @@ fun SelectArtistSheet(
 
             val items = artists.map { (id, name) ->
                 SheetOptionItem(
-                    icon = Icons.Rounded.Person,
+                    icon = IcUser,
                     label = name,
                     onClick = { runThenDismiss { onSelectArtist(id) } }
                 )
