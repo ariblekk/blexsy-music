@@ -48,16 +48,21 @@ internal fun PlayerLyricsView(
     dominantColor: Color = Color.Transparent,
     contentScrollConnection: NestedScrollConnection,
     sharedScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    showFloatingTrackCard: Boolean = true
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    if (controlsVisible) onHideControls() else onShowControls()
-                }
-            }
+            .then(
+                if (showFloatingTrackCard) {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures {
+                            if (controlsVisible) onHideControls() else onShowControls()
+                        }
+                    }
+                } else Modifier
+            )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             SyncedLyricsView(
@@ -72,7 +77,11 @@ internal fun PlayerLyricsView(
                 showTranslation = showTranslation,
                 translatedLines = translatedLyrics,
                 isTranslating = isTranslating,
-                contentPadding = PaddingValues(top = 92.dp, bottom = 88.dp),
+                contentPadding = if (showFloatingTrackCard) {
+                    PaddingValues(top = 92.dp, bottom = 88.dp)
+                } else {
+                    PaddingValues(top = 44.dp, bottom = 36.dp)
+                },
                 isKeepAwake = isKeepAwake,
                 onToggleKeepAwake = onToggleKeepAwake,
                 onToggleTranslation = onToggleTranslation,
@@ -92,15 +101,17 @@ internal fun PlayerLyricsView(
                 sharedScope = sharedScope,
                 animatedVisibilityScope = animatedVisibilityScope
             )
-            PlayerGlassTrackCard(
-                track = track,
-                dominantColor = dominantColor,
-                sharedScope = sharedScope,
-                animatedVisibilityScope = animatedVisibilityScope,
-                onCoverClick = onCoverClick,
-                onMoreClick = onMoreClick,
-                onArtistClick = onArtistClick
-            )
+            if (showFloatingTrackCard) {
+                PlayerGlassTrackCard(
+                    track = track,
+                    dominantColor = dominantColor,
+                    sharedScope = sharedScope,
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    onCoverClick = onCoverClick,
+                    onMoreClick = onMoreClick,
+                    onArtistClick = onArtistClick
+                )
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ data class Track(
     @SerialName("play_count") val playCount: Int? = null,
     val rank: Int? = null,
     @SerialName("rank_status") val rankStatus: String? = null,
+    @SerialName("is_playable") val isPlayable: Boolean = true,
     val queueTier: QueueTier = QueueTier.CONTEXT,
     val queueEntryId: String? = null
 ) {
@@ -85,5 +86,6 @@ internal fun Track.withChartRank(rank: ChartRank): Track = copy(
  * variant is just a rewrite. Unknown hosts are returned unchanged.
  */
 fun String?.toHighResArtwork(): String? = this
+    .normalizeSpotifyImageUrl()
     ?.replace(Regex("=w\\d+-h\\d+"), "=w1024-h1024")
     ?.replace(Regex("=s\\d+"), "=s1200")

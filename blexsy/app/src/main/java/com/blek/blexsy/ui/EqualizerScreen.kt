@@ -150,11 +150,17 @@ fun EqualizerScreen(onBack: () -> Unit) {
             )
         }
 
-        LazyColumn(
+        Box(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            contentAlignment = Alignment.TopCenter
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
             // Presets row on Graph & Bands
             if (selectedTab == 0 || selectedTab == 1) {
                 item {
@@ -547,6 +553,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
 
             item {
                 Spacer(modifier = Modifier.height(36.dp))
+            }
             }
         }
     }

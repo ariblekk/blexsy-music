@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -71,6 +72,7 @@ fun MiniPlayer(
         modifier = modifier
     ) {
         track?.let { currentTrack ->
+            val layout = rememberBlexsyLayoutSpec()
             val totalMs = if (dur > 0) dur else (currentTrack.durationMs ?: 0L)
             val progress = if (totalMs > 0) (pos.toFloat() / totalMs.toFloat()).coerceIn(0f, 1f) else 0f
 
@@ -82,10 +84,13 @@ fun MiniPlayer(
                         end = 16.dp,
                         top = 4.dp,
                         bottom = if (includeNavigationBars) 6.dp else 2.dp
-                    )
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .widthIn(max = 640.dp)
+                        .fillMaxWidth(),
                     // ponytail: 80% opacity glass matching player header; upgrade to RenderEffect blur when minSdk >= 31.
                     color = BlexsyColors.SurfaceContainerHigh.copy(alpha = 0.80f),
                     contentColor = BlexsyColors.TextPrimary,
@@ -181,6 +186,20 @@ fun MiniPlayer(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                        }
+
+                        if (layout.isTablet) {
+                            IconButton(
+                                onClick = { player.previous() },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = IcSkipBack,
+                                    contentDescription = stringResource(R.string.a11y_previous),
+                                    tint = BlexsyColors.TextPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
 
                         IconButton(

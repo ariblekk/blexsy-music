@@ -11,11 +11,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,7 +27,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.blek.blexsy.data.LibraryRepository
+import com.blek.blexsy.data.SpotifyAuthManager
+import com.blek.blexsy.data.SpotifySyncState
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
 import com.blek.blexsy.player.BlexsyAudioPlayer
@@ -31,7 +38,11 @@ import kotlinx.coroutines.launch
 import com.blek.blexsy.R
 import androidx.compose.ui.res.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class
+)
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -52,9 +63,13 @@ fun ProfileScreen(
     onExpandPlayer: () -> Unit = {},
     bottomNav: (@Composable () -> Unit)? = null
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val activeTrack by player.currentTrack.collectAsState()
-    val isGuest = false
+    val spotifySession by SpotifyAuthManager.session.collectAsState()
+    val spotifySyncState by SpotifyAuthManager.syncState.collectAsState()
+    val isGuest = spotifySession == null
+    var isPullRefreshing by remember { mutableStateOf(false) }
 
     var selectedTab by remember { mutableStateOf(0) } // 0: SPINS, 1: HEARTS, 2: CRATES
     val tabLabels = listOf(
@@ -164,6 +179,36 @@ fun ProfileScreen(
             }
         }
     ) { padding ->
+        val pullRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = isPullRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isPullRefreshing = true
+                    try {
+                        library?.refresh()
+                        if (spotifySession != null && library != null) {
+                            SpotifyAuthManager.syncLibrary(library, context)
+                        }
+                    } finally {
+                        isPullRefreshing = false
+                    }
+                }
+            },
+            state = pullRefreshState,
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = pullRefreshState,
+                    isRefreshing = isPullRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = if (embedded) embeddedTopPadding + 8.dp else padding.calculateTopPadding() + 8.dp),
+                    containerColor = BlexsyColors.SurfaceContainerHigh,
+                    color = BlexsyColors.Primary
+                )
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -213,8 +258,9 @@ fun ProfileScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 AsyncImage(
-                                    model = dicebearAvatarUrl(userName),
+                                    model = spotifySession?.avatarUrl?.takeIf { it.isNotBlank() } ?: dicebearAvatarUrl(userName),
                                     contentDescription = stringResource(R.string.a11y_profile_avatar),
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -295,8 +341,9 @@ fun ProfileScreen(
                         }
                     }
 
-                    if (isGuest && onOpenLogin != null) {
+                    if (onOpenLogin != null) {
                         Spacer(modifier = Modifier.height(16.dp))
+                        val linked = spotifySession
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -309,24 +356,38 @@ fun ProfileScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = stringResource(R.string.profile_account_title),
-                                        style = BlexsyTypography.Title.copy(fontSize = 15.sp),
-                                        color = BlexsyColors.TextPrimary
+                                        text = if (linked != null) {
+                                            "Spotify • @${linked.userId}"
+                                        } else {
+                                            "Connect Spotify Account"
+                                        },
+                                        style = BlexsyTypography.Title.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                                        color = if (linked != null) BlexsyColors.Primary else BlexsyColors.TextPrimary
                                     )
+                                    val subText = when (val st = spotifySyncState) {
+                                        is SpotifySyncState.Syncing -> st.status
+                                        is SpotifySyncState.Success -> "${st.summary.likedTracksCount} Liked • ${st.summary.playlistsCount} Playlists synced"
+                                        else -> if (linked != null) {
+                                            "Ketuk untuk sync ulang Liked Songs & Playlist Spotify"
+                                        } else {
+                                            "Login pakai cookie sp_dc atau Web untuk sync Liked Songs & Playlist"
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = stringResource(R.string.profile_account_desc),
+                                        text = subText,
                                         style = BlexsyTypography.Caption.copy(fontSize = 12.sp),
                                         color = BlexsyColors.TextSecondary
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 BlexsyButton(
-                                    text = stringResource(R.string.profile_lock_in),
+                                    text = if (linked != null) "Sync / Manage" else "Connect",
                                     onClick = onOpenLogin,
-                                    variant = ButtonVariant.Primary,
+                                    isLoading = spotifySyncState is SpotifySyncState.Syncing,
+                                    variant = if (linked != null) ButtonVariant.Secondary else ButtonVariant.Primary,
                                     size = ButtonSize.Sm
                                 )
                             }
@@ -398,10 +459,14 @@ fun ProfileScreen(
                                     )
                                 }
                                 itemsIndexed(tracksForDate) { index, track ->
+                                    val isSaved = favoriteTracks.any { it.id == track.id } ||
+                                        userPlaylists.any { pl -> pl.tracks.any { it.id == track.id } }
                                     TrackTile(
                                         track = track,
                                         index = index,
                                         isPlayingThis = activeTrack?.id == track.id,
+                                        isFavorite = isSaved,
+                                        onToggleFavorite = library?.let { repo -> { repo.toggleFavorite(track) } },
                                         onOpenArtist = onOpenArtist,
                                         onClick = {
                                             player.play(track, recentTracks)
@@ -482,7 +547,7 @@ fun ProfileScreen(
                                             .padding(horizontal = 16.dp, vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        CoverImage(url = pl.tracks.firstOrNull()?.image, size = 52, shapeRadius = 4)
+                                        CoverImage(url = pl.coverImage, size = 52, shapeRadius = 4)
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
@@ -502,6 +567,7 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
         }
     }
 

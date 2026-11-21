@@ -550,11 +550,14 @@ class AndroidBlexsyAudioPlayer(
     }
 
     override fun play(track: Track, newQueue: List<Track>, contextTitle: String?) {
+        val playableQueue = newQueue.filter { it.isPlayable }
+        val targetTrack = if (track.isPlayable) track else playableQueue.firstOrNull() ?: return
+        val effectiveQueue = if (playableQueue.isNotEmpty()) playableQueue else listOf(targetTrack)
         beginContextSession()
         contextTitleVal = contextTitle
         _contextTitle.value = contextTitle
-        val normalized = QueuePolicy.normalizeQueue(track, newQueue)
-        val sameTrack = _currentTrack.value?.id == track.id && exoPlayer.mediaItemCount > 0
+        val normalized = QueuePolicy.normalizeQueue(targetTrack, effectiveQueue)
+        val sameTrack = _currentTrack.value?.id == targetTrack.id && exoPlayer.mediaItemCount > 0
         val sameQueue = _queue.value.map { it.id } == normalized.map { it.id }
         val alreadyContext = _queueSource.value == QueueSource.CONTEXT
         // Tapping the already-playing song should not restart it, but switching
@@ -563,7 +566,7 @@ class AndroidBlexsyAudioPlayer(
         val force = sameTrack && (!alreadyContext || !sameQueue)
         val startPosition = if (force) exoPlayer.currentPosition else 0L
         playInternal(
-            track = track,
+            track = targetTrack,
             newQueue = normalized,
             startPositionMs = startPosition,
             source = QueueSource.CONTEXT,

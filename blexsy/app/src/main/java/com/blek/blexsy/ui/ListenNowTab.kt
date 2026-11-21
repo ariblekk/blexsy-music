@@ -127,6 +127,7 @@ internal fun ListenNowTab(
     favorites: List<Track>,
     favoriteArtists: List<ArtistSummary> = emptyList(),
     collectionPlaylists: List<Playlist> = emptyList(),
+    madeForYouPlaylists: List<Playlist> = emptyList(),
     dynamicSections: List<HomeSectionItem> = emptyList(),
     playCounts: Map<String, Int> = emptyMap(),
     activeTrack: Track?,
@@ -184,6 +185,28 @@ internal fun ListenNowTab(
 
         if (isLoading && heroTracks.isNotEmpty() && tracks.isEmpty()) {
             item { HomeFeedSkeleton() }
+        }
+
+        // Personalized Spotify "Made For You" mixes (Daily Mix, Discover Weekly, Release Radar, On Repeat)
+        if (madeForYouPlaylists.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    kicker = "MADE FOR YOU",
+                    title = "Made For You"
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(madeForYouPlaylists, key = { "made-for-you:${it.id}" }) { playlist ->
+                        PlaylistCard(
+                            playlist = playlist,
+                            onClick = { onOpenPlaylist(playlist) }
+                        )
+                    }
+                }
+            }
         }
 
         // Server-driven recommendation shelves (e.g. YouTube "Pilihan cepat").
@@ -375,6 +398,7 @@ internal fun ArtistStyleHeroCarousel(
     onPlay: (Track) -> Unit,
     onTogglePlayPause: (() -> Unit)? = null
 ) {
+    val layout = rememberBlexsyLayoutSpec()
     val pagerState = rememberPagerState(pageCount = { tracks.size })
 
     // Defensive: keep the pager inside bounds when the ranked list shrinks.
@@ -480,6 +504,14 @@ internal fun ArtistStyleHeroCarousel(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                if (layout.isTablet) {
+                    CoverImage(
+                        url = track.image,
+                        size = 88,
+                        shapeRadius = 10,
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -818,7 +850,7 @@ internal fun PlaylistCard(
                 }
             } else {
                 CoverImage(
-                    url = image ?: playlist.tracks.firstOrNull()?.image,
+                    url = image ?: playlist.coverImage,
                     size = 0,
                     shapeRadius = 0,
                     modifier = Modifier.fillMaxSize()

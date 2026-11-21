@@ -13,6 +13,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -94,6 +95,16 @@ fun SyncedLyricsView(
     onToggleTranslation: (() -> Unit)? = null,
     isLoading: Boolean = false
 ) {
+    val layout = rememberBlexsyLayoutSpec()
+    val mainLyricSize = if (layout.isTablet) 30.sp else 26.sp
+    val mainLyricLineHeight = if (layout.isTablet) 40.sp else 36.sp
+    val bgLyricSize = if (layout.isTablet) 22.sp else 19.sp
+    val bgLyricLineHeight = if (layout.isTablet) 30.sp else 26.sp
+    val translationSize = if (layout.isTablet) 18.sp else 16.sp
+    val translationLineHeight = if (layout.isTablet) 25.sp else 22.sp
+    val plainLyricSize = if (layout.isTablet) 24.sp else 21.sp
+    val plainLyricLineHeight = if (layout.isTablet) 36.sp else 32.sp
+
     if (isLoading) {
         Box(
             modifier = modifier
@@ -129,8 +140,9 @@ fun SyncedLyricsView(
                         text = plainLyrics,
                         color = Color.White.copy(alpha = 0.85f),
                         style = BlexsyTypography.Body.copy(
-                            fontSize = 18.sp,
-                            lineHeight = 30.sp,
+                            fontFamily = LyricsFont,
+                            fontSize = plainLyricSize,
+                            lineHeight = plainLyricLineHeight,
                             fontWeight = FontWeight.Medium
                         ),
                         textAlign = TextAlign.Center,
@@ -305,7 +317,10 @@ fun SyncedLyricsView(
                                 .fillMaxWidth()
                                 .height(44.dp * swell)
                                 .clipToBounds()
-                                .clickable { onSeek?.invoke(line.timeMs) },
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { onSeek?.invoke(line.timeMs) },
                             contentAlignment = if (isEndAligned) Alignment.CenterEnd else Alignment.CenterStart
                         ) {
                             Box(
@@ -370,7 +385,10 @@ fun SyncedLyricsView(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onSeek?.invoke(line.timeMs) }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onSeek?.invoke(line.timeMs) }
                             .padding(vertical = if (showTranslation && !translation.isNullOrBlank()) 10.dp else 12.dp)
                             .graphicsLayer {
                                 this.alpha = animatedAlpha
@@ -406,9 +424,10 @@ fun SyncedLyricsView(
                             }
                             Text(
                                 text = annotated,
-                                fontSize = 22.sp,
+                                fontFamily = LyricsFont,
+                                fontSize = mainLyricSize,
                                 fontWeight = FontWeight.Bold,
-                                lineHeight = 32.sp,
+                                lineHeight = mainLyricLineHeight,
                                 textAlign = textAlign,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -416,9 +435,10 @@ fun SyncedLyricsView(
                             Text(
                                 text = line.text,
                                 color = Color.White,
-                                fontSize = 22.sp,
+                                fontFamily = LyricsFont,
+                                fontSize = mainLyricSize,
                                 fontWeight = FontWeight.Bold,
-                                lineHeight = 32.sp,
+                                lineHeight = mainLyricLineHeight,
                                 textAlign = textAlign,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -426,27 +446,29 @@ fun SyncedLyricsView(
 
                         // Vokal Latar (Background / Answering vocal)
                         if (line.background != null && line.background.text.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = line.background.text,
                                 color = Color.White.copy(alpha = if (isActive) 0.82f else 0.28f),
-                                fontSize = 17.sp,
+                                fontFamily = LyricsFont,
+                                fontSize = bgLyricSize,
                                 fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Italic,
-                                lineHeight = 24.sp,
+                                lineHeight = bgLyricLineHeight,
                                 textAlign = textAlign,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
 
                         if (!translation.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = translation,
                                 color = if (isActive) BlexsyColors.Primary.copy(alpha = 0.70f) else Color.White.copy(alpha = 0.40f),
-                                fontSize = 14.sp,
+                                fontFamily = LyricsFont,
+                                fontSize = translationSize,
                                 fontWeight = FontWeight.Medium,
-                                lineHeight = 20.sp,
+                                lineHeight = translationLineHeight,
                                 textAlign = textAlign,
                                 modifier = Modifier.fillMaxWidth()
                             )

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.blek.blexsy.data.BlexsyApiClient
 import com.blek.blexsy.data.LibraryRepository
+import com.blek.blexsy.data.SpotifyAuthManager
 import com.blek.blexsy.data.SpotifyBrowseCategory
 import com.blek.blexsy.data.SpotifyMetadata
 import com.blek.blexsy.model.ArtistSummary
@@ -99,36 +100,21 @@ fun HomeScreen(
     val playCounts by library.playCounts.collectAsState()
     val recentTracks = remember(recentSpins) { recentSpins.take(10) }
 
+    // Any track in Liked Songs OR in any user playlist shows the green Spotify checkmark (`✓`).
+    val savedTracks = remember(favorites, playlists) {
+        (favorites + playlists.flatMap { it.tracks }).distinctBy { it.id }
+    }
+
+    val madeForYouPlaylists by SpotifyAuthManager.madeForYouPlaylists.collectAsState()
+    val followedSpotifyArtists by SpotifyAuthManager.followedArtists.collectAsState()
+    val savedSpotifyAlbums by SpotifyAuthManager.savedAlbums.collectAsState()
+
     val localAccountLabel = stringResource(R.string.profile_local_account)
     val likedBangersTitle = stringResource(R.string.library_liked_bangers)
 
-    // Artists the user actually hearted. Recent spins are NOT favourites, so whatever is playing
-    // must never appear in a section labelled "favourite artists". Only artists with a real
-    // catalog id (Spotify, since this app reads Spotify metadata) are kept, otherwise the card
-    // could not open a page.
-    val favoriteArtistList = remember(favorites) {
-        val idsByName = buildMap {
-            favorites.forEach { tr ->
-                tr.artistRefs.forEach { (id, name) ->
-                    if (id.isCatalogArtistId()) putIfAbsent(name.lowercase(), id)
-                }
-            }
-        }
-        favorites
-            .mapNotNull { tr ->
-                val primary = tr.artist.split(",", "&", "feat.", "ft.").firstOrNull()?.trim()
-                if (primary.isNullOrBlank() || primary.equals("Unknown artist", ignoreCase = true)) null else primary
-            }
-            .distinct()
-            .take(10)
-            .mapNotNull { name ->
-                val artistId = idsByName[name.lowercase()] ?: return@mapNotNull null
-                ArtistSummary(
-                    id = artistId,
-                    name = name,
-                    image = favorites.firstOrNull { it.artist.contains(name, ignoreCase = true) }?.image
-                )
-            }
+    // Favorite artists on Home strictly shows artists the user followed.
+    val favoriteArtistList = remember(followedSpotifyArtists) {
+        followedSpotifyArtists.distinctBy { it.id }
     }
     val collectionPlaylists = remember(playlists, favorites, likedBangersTitle) {
         buildList {
@@ -158,10 +144,24 @@ fun HomeScreen(
     var creditsData by remember { mutableStateOf<TrackCredits?>(null) }
     var isLoadingCredits by remember { mutableStateOf(false) }
 
-    // User profile state
+    // User profile state & linked Spotify session
+    LaunchedEffect(context) {
+        SpotifyAuthManager.init(context)
+    }
+    val spotifySession by SpotifyAuthManager.session.collectAsState()
     var userName by remember { mutableStateOf(initialUserName) }
     var userEmail by remember { mutableStateOf(localAccountLabel) }
     var userTotalSpins by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(spotifySession?.userId, spotifySession?.displayName) {
+        val sess = spotifySession
+        if (sess != null) {
+            userName = sess.displayName
+            userEmail = sess.email ?: "Spotify • @${sess.userId}"
+            // Auto-sync with Spotify in the background on every app launch while showing cached data immediately
+            SpotifyAuthManager.syncLibrary(library, context)
+        }
+    }
 
     // Dialogs
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
@@ -182,6 +182,9 @@ fun HomeScreen(
         scope.launch {
             if (forceRefresh) {
                 runCatching { api.clearHomeFeedCache() }
+                if (SpotifyAuthManager.session.value != null) {
+                    launch { SpotifyAuthManager.syncLibrary(library, context) }
+                }
             }
             if (tracks.isEmpty()) isLoadingHome = true
 
@@ -215,9 +218,15 @@ fun HomeScreen(
             withTimeoutOrNull(8_000) { feed.joinAll() }
             isLoadingHome = false
 
-            // Profile bits are local-only now.
+            // Profile bits are local-only unless Spotify account is linked.
             userTotalSpins = playCounts.values.sum()
-            userEmail = localAccountLabel
+            val activeSp = SpotifyAuthManager.session.value
+            if (activeSp != null) {
+                userName = activeSp.displayName
+                userEmail = activeSp.email ?: "Spotify • @${activeSp.userId}"
+            } else {
+                userEmail = localAccountLabel
+            }
             isHomeRefreshing = false
         }
     }
@@ -299,6 +308,17 @@ fun HomeScreen(
         optionsTrack = track
     }
 
+    fun handlePlusOrCheckTrack(track: Track) {
+        val isSaved = savedTracks.any { it.id == track.id }
+        if (!isSaved) {
+            // 1st tap on '+': immediately save to Liked Songs
+            library.toggleFavorite(track)
+        } else {
+            // Tap on green '✓': open the Spotify-style "Save to" playlist & Liked Songs picker
+            addToPlaylistTrack = track
+        }
+    }
+
     val currentScreen = screenStack.lastOrNull()
     val currentArtistId = (currentScreen as? BlexsyScreen.Artist)?.id
     val currentAlbumId = (currentScreen as? BlexsyScreen.Album)?.id
@@ -312,11 +332,20 @@ fun HomeScreen(
         val canOpenArtist = currentScreen !is BlexsyScreen.Artist
         val openableArtistRef = artistRef.takeIf { canOpenArtist }
 
+        val activeUserPlaylistId = (currentScreen as? BlexsyScreen.PlaylistDetail)
+            ?.takeIf { it.isUserCreated && playlists.any { pl -> pl.id == it.playlist.id } }
+            ?.playlist
+            ?.id
+
         TrackOptionsSheet(
             track = track,
-            isFavorite = favorites.any { it.id == track.id },
+            isFavorite = savedTracks.any { it.id == track.id },
             onDismiss = { optionsTrack = null },
+            onToggleFavorite = { handlePlusOrCheckTrack(track) },
             onAddToPlaylist = { addToPlaylistTrack = track },
+            onRemoveFromPlaylist = activeUserPlaylistId?.let { plId ->
+                { library.removeTrackFromPlaylist(plId, track.id) }
+            },
             onAddToQueue = { player.addToQueue(track, isNext = false) },
             onOpenAlbum = { openAlbumFor(track) },
             onOpenArtist = openableArtistRef?.let { ref -> { openArtistFor(ref) } },
@@ -338,9 +367,17 @@ fun HomeScreen(
         AddToPlaylistSheet(
             track = track,
             playlists = playlists,
+            isLiked = favorites.any { it.id == track.id },
+            likedCount = favorites.size,
+            onToggleLiked = { library.toggleFavorite(track) },
             onDismiss = { addToPlaylistTrack = null },
             onSelectPlaylist = { selectedPlaylist ->
-                library.addTrackToPlaylist(selectedPlaylist, track)
+                val alreadyIn = selectedPlaylist.tracks.any { it.id == track.id }
+                if (alreadyIn) {
+                    library.removeTrackFromPlaylist(selectedPlaylist.id, track.id)
+                } else {
+                    library.addTrackToPlaylist(selectedPlaylist, track)
+                }
             },
             onCreatePlaylist = {
                 trackForNewPlaylist = track
@@ -375,15 +412,6 @@ fun HomeScreen(
                         newPlaylistName = ""
                         showCreatePlaylistDialog = true
                     }
-                ),
-                ActionSheetItem(
-                    label = stringResource(R.string.action_port_spotify),
-                    icon = IcMusicNotes,
-                    onClick = {
-                        spotifyPlaylistInput = ""
-                        importSpotifyError = null
-                        showImportSpotifyDialog = true
-                    }
                 )
             )
         )
@@ -391,6 +419,7 @@ fun HomeScreen(
 
     val handleLogout: () -> Unit = {
         showProfileOptionsSheet = false
+        SpotifyAuthManager.logout()
         library.signOut()
         userName = initialUserName
         userEmail = localAccountLabel
@@ -403,6 +432,14 @@ fun HomeScreen(
             title = stringResource(R.string.nav_profile),
             onDismiss = { showProfileOptionsSheet = false },
             items = listOf(
+                ActionSheetItem(
+                    label = if (spotifySession != null) "Spotify Account (${spotifySession!!.displayName})" else "Connect Spotify (Cookie / Web)",
+                    icon = IcUser,
+                    onClick = {
+                        showProfileOptionsSheet = false
+                        navigateTo(BlexsyScreen.Login)
+                    }
+                ),
                 ActionSheetItem(
                     label = stringResource(R.string.profile_more_settings),
                     icon = IcGearSix,
@@ -469,165 +506,183 @@ fun HomeScreen(
     // System back / predictive back: pop the detail screen instead of exiting the app.
     BackHandler(enabled = screenStack.size > 1) { popBack() }
 
-    // Detail screens rendering
-    if (screenStack.last() != BlexsyScreen.Main) {
-        when (val current = screenStack.last()) {
-            is BlexsyScreen.Login -> {}
-            is BlexsyScreen.Artist -> {
-                key(current.id) {
-                    ArtistDetailScreen(
-                        artistId = current.id,
-                        api = api,
-                        player = player,
-                        onBack = ::popBack,
-                        onOpenAlbum = { albumId -> navigateTo(BlexsyScreen.Album(albumId)) },
-                        onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
-                        onTrackOptions = ::showTrackOptions,
-                        onExpandPlayer = { showFullPlayer = true },
-                        bottomNav = {
-                            BottomNav(
-                                selectedIndex = selectedTab,
-                                onSelect = { index ->
-                                    selectedTab = index
-                                    screenStack = listOf(BlexsyScreen.Main)
-                                }
+    val layout = rememberBlexsyLayoutSpec()
+    val detailBottomNav: (@Composable () -> Unit)? = if (layout.useSideNav) null else {
+        {
+            BottomNav(
+                selectedIndex = selectedTab,
+                onSelect = { index ->
+                    selectedTab = index
+                    screenStack = listOf(BlexsyScreen.Main)
+                }
+            )
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BlexsyColors.Background)
+    ) {
+        if (layout.useSideNav) {
+            BlexsySideNav(
+                selectedIndex = selectedTab,
+                expanded = layout.sideNavExpanded,
+                onSelect = { index ->
+                    selectedTab = index
+                    if (index != 1) {
+                        showSearchPage = false
+                        searchState.clearQuery()
+                    }
+                    if (screenStack.size > 1) {
+                        screenStack = listOf(BlexsyScreen.Main)
+                    }
+                }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            // Detail screens rendering
+            if (screenStack.last() != BlexsyScreen.Main) {
+                when (val current = screenStack.last()) {
+                    is BlexsyScreen.Login -> {
+                        SpotifyLoginScreen(
+                            library = library,
+                            onBack = ::popBack,
+                            onLoginSuccess = { name, emailOrHandle ->
+                                userName = name
+                                userEmail = emailOrHandle
+                            }
+                        )
+                    }
+                    is BlexsyScreen.Artist -> {
+                        key(current.id) {
+                            ArtistDetailScreen(
+                                artistId = current.id,
+                                api = api,
+                                player = player,
+                                onBack = ::popBack,
+                                onOpenAlbum = { albumId -> navigateTo(BlexsyScreen.Album(albumId)) },
+                                onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
+                                favorites = savedTracks,
+                                onToggleFavorite = ::handlePlusOrCheckTrack,
+                                onTrackOptions = ::showTrackOptions,
+                                onExpandPlayer = { showFullPlayer = true },
+                                bottomNav = detailBottomNav
                             )
                         }
-                    )
+                    }
+                    is BlexsyScreen.Album -> {
+                        AlbumDetailScreen(
+                            albumId = current.id,
+                            api = api,
+                            player = player,
+                            onBack = ::popBack,
+                            onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
+                            favorites = savedTracks,
+                            onToggleFavorite = ::handlePlusOrCheckTrack,
+                            onTrackOptions = ::showTrackOptions,
+                            onExpandPlayer = { showFullPlayer = true },
+                            bottomNav = detailBottomNav
+                        )
+                    }
+                    is BlexsyScreen.Profile -> {
+                        ProfileScreen(
+                            userName = userName,
+                            userEmail = userEmail,
+                            totalSpins = userTotalSpins,
+                            player = player,
+                            library = library,
+                            onBack = ::popBack,
+                            onLogout = handleLogout,
+                            onOpenLogin = { navigateTo(BlexsyScreen.Login) },
+                            onOpenSettings = { navigateTo(BlexsyScreen.Settings) },
+                            onOpenPlaylist = { p -> navigateTo(BlexsyScreen.PlaylistDetail(p, false)) },
+                            onTrackOptions = ::showTrackOptions,
+                            onOpenArtist = ::openArtistFor,
+                            onExpandPlayer = { showFullPlayer = true },
+                            bottomNav = detailBottomNav
+                        )
+                    }
+                    is BlexsyScreen.Settings -> {
+                        SettingsScreen(
+                            player = player,
+                            onBack = ::popBack,
+                            onOpenEqualizer = { navigateTo(BlexsyScreen.Equalizer) }
+                        )
+                    }
+                    is BlexsyScreen.Equalizer -> {
+                        EqualizerScreen(onBack = ::popBack)
+                    }
+                    is BlexsyScreen.PlaylistDetail -> {
+                        // Every playlist here is local now (liked songs, profile playlists, library rows):
+                        // resolve the live playlist state so adding/removing tracks updates immediately.
+                        val isLocalPlaylist = current.isUserCreated
+                        val livePlaylist = when {
+                            current.playlist.id == "liked-songs" -> current.playlist.copy(tracks = favorites)
+                            else -> playlists.firstOrNull { it.id == current.playlist.id } ?: current.playlist
+                        }
+                        PlaylistDetailScreen(
+                            title = livePlaylist.name,
+                            imageUrl = livePlaylist.coverImage,
+                            description = "By ${if (isLocalPlaylist) userName else BlexsyThemeConfig.appName}",
+                            tracks = livePlaylist.tracks,
+                            isLoading = false,
+                            player = player,
+                            onBack = ::popBack,
+                            onDeletePlaylist = if (isLocalPlaylist) {
+                                {
+                                    // Optimistic: the row disappears now, the server delete is queued.
+                                    library.deletePlaylist(livePlaylist)
+                                    popBack()
+                                }
+                            } else null,
+                            favorites = savedTracks,
+                            onToggleFavorite = ::handlePlusOrCheckTrack,
+                            onTrackOptions = ::showTrackOptions,
+                            onExpandPlayer = { showFullPlayer = true },
+                            bottomNav = detailBottomNav
+                        )
+                    }
+                    is BlexsyScreen.Genre -> key(current.id) {
+                        GenreDetailScreen(
+                            genreId = current.id,
+                            genreTitle = current.title,
+                            genreImage = current.imageUrl,
+                            api = api,
+                            player = player,
+                            onBack = ::popBack,
+                            onOpenPlaylist = { playlistId, name ->
+                                scope.launch {
+                                    runCatching { api.playlistDetail(playlistId) }.onSuccess { (fetchedName, tracks) ->
+                                        navigateTo(
+                                            BlexsyScreen.PlaylistDetail(
+                                                Playlist(
+                                                    id = playlistId,
+                                                    name = fetchedName.ifBlank { name },
+                                                    tracks = tracks
+                                                ),
+                                                isUserCreated = false
+                                            )
+                                        )
+                                    }
+                                }
+                            },
+                            onOpenAlbum = { albumId -> navigateTo(BlexsyScreen.Album(albumId)) },
+                            onOpenGenre = { nextId, nextTitle, nextImage ->
+                                navigateTo(BlexsyScreen.Genre(nextId, nextTitle, imageUrl = nextImage))
+                            },
+                            onExpandPlayer = { showFullPlayer = true },
+                            bottomNav = detailBottomNav
+                        )
+                    }
+                    is BlexsyScreen.Main -> {}
                 }
-            }
-            is BlexsyScreen.Album -> {
-                AlbumDetailScreen(
-                    albumId = current.id,
-                    api = api,
-                    player = player,
-                    onBack = ::popBack,
-                    onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
-                    onTrackOptions = ::showTrackOptions,
-                    onExpandPlayer = { showFullPlayer = true },
-                    bottomNav = {
-                        BottomNav(
-                            selectedIndex = selectedTab,
-                            onSelect = { index ->
-                                selectedTab = index
-                                screenStack = listOf(BlexsyScreen.Main)
-                            }
-                        )
-                    }
-                )
-            }
-            is BlexsyScreen.Profile -> {
-                ProfileScreen(
-                    userName = userName,
-                    userEmail = userEmail,
-                    totalSpins = userTotalSpins,
-                    player = player,
-                    library = library,
-                    onBack = ::popBack,
-                    onLogout = handleLogout,
-                    onOpenLogin = { navigateTo(BlexsyScreen.Login) },
-                    onOpenSettings = { navigateTo(BlexsyScreen.Settings) },
-                    onOpenPlaylist = { p -> navigateTo(BlexsyScreen.PlaylistDetail(p, false)) },
-                    onTrackOptions = ::showTrackOptions,
-                    onOpenArtist = ::openArtistFor,
-                    onExpandPlayer = { showFullPlayer = true },
-                    bottomNav = {
-                        BottomNav(
-                            selectedIndex = selectedTab,
-                            onSelect = { index ->
-                                selectedTab = index
-                                screenStack = listOf(BlexsyScreen.Main)
-                            }
-                        )
-                    }
-                )
-            }
-            is BlexsyScreen.Settings -> {
-                SettingsScreen(
-                    player = player,
-                    onBack = ::popBack,
-                    onOpenEqualizer = { navigateTo(BlexsyScreen.Equalizer) }
-                )
-            }
-            is BlexsyScreen.Equalizer -> {
-                EqualizerScreen(onBack = ::popBack)
-            }
-            is BlexsyScreen.PlaylistDetail -> {
-                // Every playlist here is local now (liked songs, profile playlists, library rows):
-                // the YouTube home feed no longer supplies remote ones.
-                val isLocalPlaylist = current.isUserCreated
-                PlaylistDetailScreen(
-                    title = current.playlist.name,
-                    imageUrl = current.playlist.tracks.firstOrNull()?.image,
-                    description = "By ${if (isLocalPlaylist) userName else BlexsyThemeConfig.appName}",
-                    tracks = current.playlist.tracks,
-                    isLoading = false,
-                    player = player,
-                    onBack = ::popBack,
-                    onDeletePlaylist = if (isLocalPlaylist) {
-                        {
-                            // Optimistic: the row disappears now, the server delete is queued.
-                            library.deletePlaylist(current.playlist)
-                        }
-                    } else null,
-                    onTrackOptions = ::showTrackOptions,
-                    onExpandPlayer = { showFullPlayer = true },
-                    bottomNav = {
-                        BottomNav(
-                            selectedIndex = selectedTab,
-                            onSelect = { index ->
-                                selectedTab = index
-                                // Tapping a tab from a playlist/detail page returns to the
-                                // tab root instead of keeping the detail screen on top.
-                                screenStack = listOf(BlexsyScreen.Main)
-                            }
-                        )
-                    }
-                )
-            }
-            is BlexsyScreen.Genre -> key(current.id) {
-                GenreDetailScreen(
-                    genreId = current.id,
-                    genreTitle = current.title,
-                    genreImage = current.imageUrl,
-                    api = api,
-                    player = player,
-                    onBack = ::popBack,
-                    onOpenPlaylist = { playlistId, name ->
-                        scope.launch {
-                            runCatching { api.playlistDetail(playlistId) }.onSuccess { (fetchedName, tracks) ->
-                                navigateTo(
-                                    BlexsyScreen.PlaylistDetail(
-                                        Playlist(
-                                            id = playlistId,
-                                            name = fetchedName.ifBlank { name },
-                                            tracks = tracks
-                                        ),
-                                        isUserCreated = false
-                                    )
-                                )
-                            }
-                        }
-                    },
-                    onOpenAlbum = { albumId -> navigateTo(BlexsyScreen.Album(albumId)) },
-                    onOpenGenre = { nextId, nextTitle, nextImage ->
-                        navigateTo(BlexsyScreen.Genre(nextId, nextTitle, imageUrl = nextImage))
-                    },
-                    onExpandPlayer = { showFullPlayer = true },
-                    bottomNav = {
-                        BottomNav(
-                            selectedIndex = selectedTab,
-                            onSelect = { index ->
-                                selectedTab = index
-                                screenStack = listOf(BlexsyScreen.Main)
-                            }
-                        )
-                    }
-                )
-            }
-            is BlexsyScreen.Main -> {}
-        }
-    } else {
+            } else {
 
     val tabTitle = when (selectedTab) {
         0 -> stringResource(R.string.nav_home)
@@ -639,7 +694,11 @@ fun HomeScreen(
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentTopPadding = topInset + 64.dp
-    val contentBottomPadding = bottomInset + if (activeTrack != null) 160.dp else 90.dp
+    val contentBottomPadding = bottomInset + if (layout.useSideNav) {
+        if (activeTrack != null) 88.dp else 24.dp
+    } else {
+        if (activeTrack != null) 160.dp else 90.dp
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(BlexsyColors.Background)) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -679,6 +738,7 @@ fun HomeScreen(
                             favorites = favorites,
                             favoriteArtists = favoriteArtistList,
                             collectionPlaylists = collectionPlaylists,
+                            madeForYouPlaylists = madeForYouPlaylists,
                             dynamicSections = dynamicSections,
                             playCounts = playCounts,
                             activeTrack = activeTrack,
@@ -711,7 +771,7 @@ fun HomeScreen(
                                     )
                                 )
                             },
-                            onToggleFavorite = { track -> library.toggleFavorite(track) },
+                            onToggleFavorite = ::handlePlusOrCheckTrack,
                             onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
                             onOpenPlaylist = { p -> navigateTo(BlexsyScreen.PlaylistDetail(p, isUserCreated = p.id != "liked")) },
                             onSeeAllPlaylists = { selectedTab = 2 },
@@ -746,6 +806,8 @@ fun HomeScreen(
                     isLoading = isLoadingHome,
                     favorites = favorites,
                     playlists = playlists,
+                    savedAlbums = savedSpotifyAlbums,
+                    followedArtists = followedSpotifyArtists,
                     onOpenLiked = {
                         navigateTo(
                             BlexsyScreen.PlaylistDetail(
@@ -758,7 +820,9 @@ fun HomeScreen(
                             )
                         )
                     },
-                    onOpenPlaylist = { p -> navigateTo(BlexsyScreen.PlaylistDetail(p, isUserCreated = true)) }
+                    onOpenPlaylist = { p -> navigateTo(BlexsyScreen.PlaylistDetail(p, isUserCreated = true)) },
+                    onOpenAlbum = { albumId -> navigateTo(BlexsyScreen.Album(albumId)) },
+                    onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) }
                 )
 
                 else -> ProfileScreen(
@@ -801,7 +865,10 @@ fun HomeScreen(
                 actions = {
                     when (selectedTab) {
                         2 -> IconButton(
-                            onClick = { showPlaylistOptionsSheet = true },
+                            onClick = {
+                                newPlaylistName = ""
+                                showCreatePlaylistDialog = true
+                            },
                             modifier = Modifier.size(44.dp)
                         ) {
                             Icon(
@@ -835,17 +902,20 @@ fun HomeScreen(
         ) {
             MiniPlayer(
                 player = player,
-                onExpand = { showFullPlayer = true }
+                onExpand = { showFullPlayer = true },
+                includeNavigationBars = layout.useSideNav
             )
-            BottomNav(
-                selectedIndex = selectedTab,
-                onSelect = { index ->
-                    selectedTab = index
-                    if (index != 1) {
-                        searchState.clearQuery()
+            if (!layout.useSideNav) {
+                BottomNav(
+                    selectedIndex = selectedTab,
+                    onSelect = { index ->
+                        selectedTab = index
+                        if (index != 1) {
+                            searchState.clearQuery()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
     // Full-screen search page: the Search tab only shows a display surface, typing
@@ -857,10 +927,10 @@ fun HomeScreen(
     if (showSearchPage) {
         SearchPage(
             state = searchState,
-            contentBottomPadding = bottomInset + if (activeTrack != null) 160.dp else 90.dp,
+            contentBottomPadding = contentBottomPadding,
             isLoading = isLoadingHome,
             recentTracks = recentSpins.take(20),
-            favorites = favorites,
+            favorites = savedTracks,
             activeTrack = activeTrack,
             onClose = {
                 showSearchPage = false
@@ -873,30 +943,35 @@ fun HomeScreen(
                     player.startRadio(track)
                 }
             },
-            onToggleFavorite = { track -> library.toggleFavorite(track) },
+            onToggleFavorite = ::handlePlusOrCheckTrack,
             onOpenArtist = { artistId -> navigateTo(BlexsyScreen.Artist(artistId)) },
             onTrackOptions = { track, list -> showTrackOptions(track, list) },
             bottomBar = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     MiniPlayer(
                         player = player,
-                        onExpand = { showFullPlayer = true }
+                        onExpand = { showFullPlayer = true },
+                        includeNavigationBars = layout.useSideNav
                     )
-                    BottomNav(
-                        selectedIndex = selectedTab,
-                        onSelect = { index ->
-                            selectedTab = index
-                            if (index != 1) {
-                                showSearchPage = false
-                                searchState.clearQuery()
+                    if (!layout.useSideNav) {
+                        BottomNav(
+                            selectedIndex = selectedTab,
+                            onSelect = { index ->
+                                selectedTab = index
+                                if (index != 1) {
+                                    showSearchPage = false
+                                    searchState.clearQuery()
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         )
     }
 
+            }
+        }
     }
 
     // Full Player Modal

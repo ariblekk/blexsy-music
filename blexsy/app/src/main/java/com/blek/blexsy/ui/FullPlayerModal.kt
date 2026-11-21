@@ -14,8 +14,10 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.res.stringResource
 import com.blek.blexsy.R
 import androidx.compose.ui.graphics.RectangleShape
@@ -110,10 +113,11 @@ fun FullPlayerModal(
     val isRadioLoading by (if (player is com.blek.blexsy.AndroidBlexsyAudioPlayer) player.isRadioLoading.collectAsState() else remember { mutableStateOf(false) }).let { it }
     val radioError by (if (player is com.blek.blexsy.AndroidBlexsyAudioPlayer) player.radioError.collectAsState() else remember { mutableStateOf<String?>(null) }).let { it }
 
-    // Local-first: the heart reflects the repository immediately after a tap.
+    // Local-first: the save/checkmark badge reflects whether the track is in Liked Songs or any user playlist.
     val favorites by (library?.favorites ?: emptyFlow()).collectAsState(emptyList())
-    val isFavorite = favorites.any { it.id == track.id }
     val playlists by (library?.playlists ?: emptyFlow()).collectAsState(emptyList())
+    val isLikedTrack = favorites.any { it.id == track.id }
+    val isFavorite = isLikedTrack || playlists.any { pl -> pl.tracks.any { it.id == track.id } }
 
     var showQueue by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
@@ -466,108 +470,268 @@ fun FullPlayerModal(
                     }
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                SharedTransitionLayout(
+            val layout = rememberBlexsyLayoutSpec()
+
+            if (layout.useTwoPanePlayer) {
+                Row(
                     modifier = Modifier
                         .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 32.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AnimatedContent(
-                        targetState = currentView,
-                        modifier = Modifier.fillMaxSize(),
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(320)) togetherWith fadeOut(animationSpec = tween(320))
-                        },
-                        label = "player_content_morph"
-                    ) { panel ->
-                        when (panel) {
-                            FullPlayerView.LYRICS -> PlayerLyricsView(
-                                track = track,
+                    // Left Pane: Cover Artwork + Track Info + Transport Controls
+                    Box(
+                        modifier = Modifier
+                            .weight(0.46f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .widthIn(max = 440.dp)
+                                .fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            ) {
+                                SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+                                    AnimatedContent(
+                                        targetState = FullPlayerView.COVER,
+                                        modifier = Modifier.fillMaxSize(),
+                                        label = "player_left_cover"
+                                    ) { _ ->
+                                        PlayerCoverView(
+                                            track = track,
+                                            onCoverClick = { showQueue = !showQueue },
+                                            onMoreClick = openMore,
+                                            onArtistClick = artistClick,
+                                            sharedScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this,
+                                            isFavorite = isFavorite,
+                                            onToggleFavorite = if (library != null) ({
+                                                if (!isFavorite) {
+                                                    library.toggleFavorite(track)
+                                                } else {
+                                                    showAddToPlaylistSheet = true
+                                                }
+                                            }) else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            PlayerControls(
                                 player = player,
-                                lyrics = lyricsResult,
-                                isLoading = isLoadingLyrics,
                                 positionMs = pos,
+                                durationMs = dur,
                                 isPlaying = isPlaying,
-                                showTranslation = showTranslation,
-                                translatedLyrics = translatedLyrics,
-                                isTranslating = isTranslating,
-                                isKeepAwake = isKeepAwake,
-                                controlsVisible = areControlsVisible,
+                                isBuffering = isBuffering,
+                                repeatMode = repeatMode,
+                                isOverlayMode = false,
+                                controlsVisible = true,
+                                isScrubbing = isScrubberDragging,
+                                onScrubbingChange = { isScrubberDragging = it },
+                                onInteraction = { lastInteractionTime = android.os.SystemClock.elapsedRealtime() },
                                 onShowControls = showControlsWithTimeout,
-                                onHideControls = { areControlsVisible = false },
-                                onToggleKeepAwake = { setKeepAwake(!isKeepAwake) },
-                                onToggleTranslation = { setTranslation(!showTranslation) },
-                                onCoverClick = { showLyrics = false },
-                                onMoreClick = openMore,
-                                onArtistClick = artistClick,
-                                dominantColor = dominantColor,
-                                contentScrollConnection = contentScrollConnection,
-                                sharedScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this
-                            )
-
-                            FullPlayerView.QUEUE -> PlayerQueueView(
-                                player = player,
-                                track = track,
-                                queue = queue,
-                                queueSource = queueSource,
-                                radioSeedTrack = radioSeedTrack,
-                                radioError = radioError,
-                                isRadioLoading = isRadioLoading,
-                                dominantColor = dominantColor,
-                                contentScrollConnection = contentScrollConnection,
-                                onShowControls = { areControlsVisible = true },
-                                onCoverClick = { showQueue = false },
-                                onMoreClick = openMore,
-                                onArtistClick = artistClick,
-                                sharedScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this
-                            )
-
-                            FullPlayerView.COVER -> PlayerCoverView(
-                                track = track,
-                                onCoverClick = { if (lyricsResult != null) showLyrics = true },
-                                onMoreClick = openMore,
-                                onArtistClick = artistClick,
-                                sharedScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this
+                                onOpenSleepTimer = { showSleepTimerDialog = true },
+                                showLyrics = !showQueue,
+                                showQueue = showQueue,
+                                onShowLyricsChange = { if (it) showQueue = false },
+                                onShowQueueChange = { showQueue = it }
                             )
                         }
                     }
-                }
-                }
 
-                PlayerControls(
-                    player = player,
-                    positionMs = pos,
-                    durationMs = dur,
-                    isPlaying = isPlaying,
-                    isBuffering = isBuffering,
-                    repeatMode = repeatMode,
-                    isOverlayMode = showLyrics || showQueue,
-                    controlsVisible = areControlsVisible,
-                    isScrubbing = isScrubberDragging,
-                    onScrubbingChange = { isScrubberDragging = it },
-                    onInteraction = { lastInteractionTime = android.os.SystemClock.elapsedRealtime() },
-                    onShowControls = showControlsWithTimeout,
-                    onOpenSleepTimer = { showSleepTimerDialog = true },
-                    showLyrics = showLyrics,
-                    showQueue = showQueue,
-                    onShowLyricsChange = { showLyrics = it },
-                    onShowQueueChange = { showQueue = it }
-                )
+                    // Right Pane: Live Lyrics or Queue Panel
+                    Box(
+                        modifier = Modifier
+                            .weight(0.54f)
+                            .fillMaxHeight()
+                    ) {
+                        val rightPaneView = if (showQueue) FullPlayerView.QUEUE else FullPlayerView.LYRICS
+                        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+                            AnimatedContent(
+                                targetState = rightPaneView,
+                                modifier = Modifier.fillMaxSize(),
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(280)) togetherWith fadeOut(animationSpec = tween(280))
+                                },
+                                label = "player_right_pane"
+                            ) { panel ->
+                                when (panel) {
+                                    FullPlayerView.QUEUE -> PlayerQueueView(
+                                        player = player,
+                                        track = track,
+                                        queue = queue,
+                                        queueSource = queueSource,
+                                        radioSeedTrack = radioSeedTrack,
+                                        radioError = radioError,
+                                        isRadioLoading = isRadioLoading,
+                                        dominantColor = dominantColor,
+                                        contentScrollConnection = contentScrollConnection,
+                                        onShowControls = { areControlsVisible = true },
+                                        onCoverClick = { showQueue = false },
+                                        onMoreClick = openMore,
+                                        onArtistClick = artistClick,
+                                        sharedScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this,
+                                        showFloatingTrackCard = false
+                                    )
+
+                                    else -> PlayerLyricsView(
+                                        track = track,
+                                        player = player,
+                                        lyrics = lyricsResult,
+                                        isLoading = isLoadingLyrics,
+                                        positionMs = pos,
+                                        isPlaying = isPlaying,
+                                        showTranslation = showTranslation,
+                                        translatedLyrics = translatedLyrics,
+                                        isTranslating = isTranslating,
+                                        isKeepAwake = isKeepAwake,
+                                        controlsVisible = true,
+                                        onShowControls = showControlsWithTimeout,
+                                        onHideControls = {},
+                                        onToggleKeepAwake = { setKeepAwake(!isKeepAwake) },
+                                        onToggleTranslation = { setTranslation(!showTranslation) },
+                                        onCoverClick = {},
+                                        onMoreClick = openMore,
+                                        onArtistClick = artistClick,
+                                        dominantColor = dominantColor,
+                                        contentScrollConnection = contentScrollConnection,
+                                        sharedScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this,
+                                        showFloatingTrackCard = false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 540.dp)
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        ) {
+                            SharedTransitionLayout(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                            ) {
+                                AnimatedContent(
+                                    targetState = currentView,
+                                    modifier = Modifier.fillMaxSize(),
+                                    transitionSpec = {
+                                        fadeIn(animationSpec = tween(320)) togetherWith fadeOut(animationSpec = tween(320))
+                                    },
+                                    label = "player_content_morph"
+                                ) { panel ->
+                                    when (panel) {
+                                        FullPlayerView.LYRICS -> PlayerLyricsView(
+                                            track = track,
+                                            player = player,
+                                            lyrics = lyricsResult,
+                                            isLoading = isLoadingLyrics,
+                                            positionMs = pos,
+                                            isPlaying = isPlaying,
+                                            showTranslation = showTranslation,
+                                            translatedLyrics = translatedLyrics,
+                                            isTranslating = isTranslating,
+                                            isKeepAwake = isKeepAwake,
+                                            controlsVisible = areControlsVisible,
+                                            onShowControls = showControlsWithTimeout,
+                                            onHideControls = { areControlsVisible = false },
+                                            onToggleKeepAwake = { setKeepAwake(!isKeepAwake) },
+                                            onToggleTranslation = { setTranslation(!showTranslation) },
+                                            onCoverClick = { showLyrics = false },
+                                            onMoreClick = openMore,
+                                            onArtistClick = artistClick,
+                                            dominantColor = dominantColor,
+                                            contentScrollConnection = contentScrollConnection,
+                                            sharedScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this
+                                        )
+
+                                        FullPlayerView.QUEUE -> PlayerQueueView(
+                                            player = player,
+                                            track = track,
+                                            queue = queue,
+                                            queueSource = queueSource,
+                                            radioSeedTrack = radioSeedTrack,
+                                            radioError = radioError,
+                                            isRadioLoading = isRadioLoading,
+                                            dominantColor = dominantColor,
+                                            contentScrollConnection = contentScrollConnection,
+                                            onShowControls = { areControlsVisible = true },
+                                            onCoverClick = { showQueue = false },
+                                            onMoreClick = openMore,
+                                            onArtistClick = artistClick,
+                                            sharedScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this
+                                        )
+
+                                        FullPlayerView.COVER -> PlayerCoverView(
+                                            track = track,
+                                            onCoverClick = { if (lyricsResult != null) showLyrics = true },
+                                            onMoreClick = openMore,
+                                            onArtistClick = artistClick,
+                                            sharedScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this,
+                                            isFavorite = isFavorite,
+                                            onToggleFavorite = if (library != null) ({
+                                                if (!isFavorite) {
+                                                    library.toggleFavorite(track)
+                                                } else {
+                                                    showAddToPlaylistSheet = true
+                                                }
+                                            }) else null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        PlayerControls(
+                            player = player,
+                            positionMs = pos,
+                            durationMs = dur,
+                            isPlaying = isPlaying,
+                            isBuffering = isBuffering,
+                            repeatMode = repeatMode,
+                            isOverlayMode = showLyrics || showQueue,
+                            controlsVisible = areControlsVisible,
+                            isScrubbing = isScrubberDragging,
+                            onScrubbingChange = { isScrubberDragging = it },
+                            onInteraction = { lastInteractionTime = android.os.SystemClock.elapsedRealtime() },
+                            onShowControls = showControlsWithTimeout,
+                            onOpenSleepTimer = { showSleepTimerDialog = true },
+                            showLyrics = showLyrics,
+                            showQueue = showQueue,
+                            onShowLyricsChange = { showLyrics = it },
+                            onShowQueueChange = { showQueue = it }
+                        )
+                    }
+                }
             }
         }
 
@@ -664,10 +828,17 @@ fun FullPlayerModal(
             AddToPlaylistSheet(
                 track = track,
                 playlists = playlists,
+                isLiked = isLikedTrack,
+                likedCount = favorites.size,
+                onToggleLiked = if (library != null) ({ library.toggleFavorite(track) }) else null,
                 onDismiss = { showAddToPlaylistSheet = false },
                 onSelectPlaylist = { selectedPlaylist ->
-                    library?.addTrackToPlaylist(selectedPlaylist, track)
-                    showAddToPlaylistSheet = false
+                    val alreadyIn = selectedPlaylist.tracks.any { it.id == track.id }
+                    if (alreadyIn) {
+                        library?.removeTrackFromPlaylist(selectedPlaylist.id, track.id)
+                    } else {
+                        library?.addTrackToPlaylist(selectedPlaylist, track)
+                    }
                 },
                 onCreatePlaylist = {
                     showAddToPlaylistSheet = false

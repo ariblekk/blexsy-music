@@ -16,6 +16,7 @@ import com.blek.blexsy.model.CreditPerson
 import com.blek.blexsy.model.CreditRole
 import com.blek.blexsy.model.Track
 import com.blek.blexsy.model.TrackCredits
+import com.blek.blexsy.model.normalizeSpotifyImageUrl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,7 +56,8 @@ data class SpotifyTrack(
     val artistIds: List<String> = emptyList(),
     val album: String? = null,
     @SerialName("duration_ms") val durationMs: Long? = null,
-    val image: String? = null
+    val image: String? = null,
+    val playable: Boolean = true
 )
 
 @Serializable
@@ -113,17 +115,47 @@ data class SpotifyAlbumDetail(
     val tracks: List<SpotifyTrack> = emptyList()
 )
 
+data class SpotifyExternalLink(
+    val name: String,
+    val url: String
+)
+
+data class SpotifyTopCity(
+    val city: String,
+    val country: String,
+    val region: String? = null,
+    val numberOfListeners: Long = 0L
+)
+
+data class SpotifyPinnedPick(
+    val title: String,
+    val subtitle: String? = null,
+    val comment: String? = null,
+    val type: String? = null,
+    val id: String? = null,
+    val uri: String? = null,
+    val image: String? = null
+)
+
 data class SpotifyArtistDetail(
     val id: String,
     val name: String,
     val uri: String = "",
     val image: String? = null,
+    val banner: String? = null,
+    val gallery: List<String> = emptyList(),
+    val verified: Boolean = false,
     val monthlyListeners: Long? = null,
     val followers: Long? = null,
+    val worldRank: Int? = null,
+    val topCities: List<SpotifyTopCity> = emptyList(),
+    val externalLinks: List<SpotifyExternalLink> = emptyList(),
+    val pinnedPick: SpotifyPinnedPick? = null,
     val biography: String? = null,
     val topTracks: List<SpotifyTrack> = emptyList(),
     val albums: List<SpotifyAlbum> = emptyList(),
     val singles: List<SpotifyAlbum> = emptyList(),
+    val playlists: List<SpotifyPlaylist> = emptyList(),
     val relatedArtists: List<SpotifyArtist> = emptyList()
 )
 
@@ -377,24 +409,83 @@ internal data class RawWrapper<T>(val trackUnion: T? = null, val albumUnion: T? 
 private fun String.idFromUri(): String = substringAfterLast(':')
 
 private fun List<ImageSourceDto>?.best(): String? =
-    this?.maxByOrNull { it.width ?: 0 }?.url ?: this?.firstOrNull()?.url
+    (this?.maxByOrNull { it.width ?: it.maxWidth ?: 0 }?.url ?: this?.firstOrNull()?.url)
+        .normalizeSpotifyImageUrl()
 
-private fun ImageGroupDto?.best(): String? = this?.sources.best()
-
-@Serializable
-internal data class ImageSourceDto(val url: String? = null, val width: Int? = null, val height: Int? = null)
-
-@Serializable
-internal data class ImageGroupDto(val sources: List<ImageSourceDto> = emptyList())
+private fun ImageGroupDto?.best(): String? =
+    this?.sources?.takeIf { it.isNotEmpty() }?.best() ?: this?.data?.sources.best()
 
 @Serializable
-internal data class ProfileDto(val name: String? = null, val biography: BiographyDto? = null)
+internal data class ImageSourceDto(
+    val url: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val maxWidth: Int? = null,
+    val maxHeight: Int? = null
+)
+
+@Serializable
+internal data class ImageDataDto(val sources: List<ImageSourceDto> = emptyList())
+
+@Serializable
+internal data class ImageGroupDto(
+    val sources: List<ImageSourceDto> = emptyList(),
+    val data: ImageDataDto? = null
+)
+
+@Serializable
+internal data class ExternalLinkDto(
+    val name: String? = null,
+    val url: String? = null
+)
+
+@Serializable
+internal data class PinnedItemInnerDto(
+    val name: String? = null,
+    val title: String? = null,
+    val uri: String? = null,
+    val type: String? = null,
+    val coverArt: ImageGroupDto? = null,
+    val images: ItemsDto<ImageGroupDto>? = null
+)
+
+@Serializable
+internal data class PinnedItemWrapperDto(val data: PinnedItemInnerDto? = null)
+
+@Serializable
+internal data class PinnedItemDto(
+    val comment: String? = null,
+    val type: String? = null,
+    val title: String? = null,
+    val subtitle: String? = null,
+    val uri: String? = null,
+    val backgroundImageV2: ImageGroupDto? = null,
+    val thumbnailImage: ImageGroupDto? = null,
+    val itemV2: PinnedItemWrapperDto? = null
+)
+
+@Serializable
+internal data class PlaylistWrapperDto(val data: PlaylistV2Dto? = null)
+
+@Serializable
+internal data class ProfileDto(
+    val name: String? = null,
+    val verified: Boolean? = null,
+    val biography: BiographyDto? = null,
+    val externalLinks: ItemsDto<ExternalLinkDto>? = null,
+    val pinnedItem: PinnedItemDto? = null,
+    val playlistsV2: ItemsDto<PlaylistWrapperDto>? = null
+)
 
 @Serializable
 internal data class BiographyDto(val text: String? = null)
 
 @Serializable
-internal data class VisualsDto(val avatarImage: ImageGroupDto? = null)
+internal data class VisualsDto(
+    val avatarImage: ImageGroupDto? = null,
+    val headerImage: ImageGroupDto? = null,
+    val gallery: ItemsDto<ImageGroupDto>? = null
+)
 
 @Serializable
 internal data class ItemsDto<T>(val items: List<T> = emptyList(), val totalCount: Int? = null)
@@ -464,7 +555,20 @@ internal data class AlbumUnionDto(
 internal data class AlbumTrackItemDto(val track: TrackDto? = null, val uid: String? = null)
 
 @Serializable
-internal data class ArtistStatsDto(val monthlyListeners: Long? = null, val followers: Long? = null)
+internal data class TopCityDto(
+    val numberOfListeners: Long? = null,
+    val city: String? = null,
+    val country: String? = null,
+    val region: String? = null
+)
+
+@Serializable
+internal data class ArtistStatsDto(
+    val monthlyListeners: Long? = null,
+    val followers: Long? = null,
+    val worldRank: Int? = null,
+    val topCities: ItemsDto<TopCityDto>? = null
+)
 
 @Serializable
 internal data class TopTrackItemDto(val track: TrackDto? = null, val uid: String? = null)
@@ -476,16 +580,22 @@ internal data class ReleaseGroupDto(val releases: ItemsDto<AlbumUnionDto>? = nul
 internal data class DiscographyDto(
     val topTracks: ItemsDto<TopTrackItemDto>? = null,
     val albums: ItemsDto<ReleaseGroupDto>? = null,
-    val singles: ItemsDto<ReleaseGroupDto>? = null
+    val singles: ItemsDto<ReleaseGroupDto>? = null,
+    val compilations: ItemsDto<ReleaseGroupDto>? = null
 )
 
 @Serializable
-internal data class RelatedContentDto(val relatedArtists: ItemsDto<ArtistRefDto>? = null)
+internal data class RelatedContentDto(
+    val relatedArtists: ItemsDto<ArtistRefDto>? = null,
+    val featuringV2: ItemsDto<PlaylistWrapperDto>? = null,
+    val discoveredOnV2: ItemsDto<PlaylistWrapperDto>? = null
+)
 
 @Serializable
 internal data class ArtistUnionDto(
     val id: String? = null,
     val uri: String? = null,
+    val headerImage: ImageGroupDto? = null,
     val profile: ProfileDto? = null,
     val visuals: VisualsDto? = null,
     val stats: ArtistStatsDto? = null,
@@ -557,7 +667,8 @@ internal fun TrackDto.toTrack(albumName: String? = null, cover: String? = null):
         artistIds = artistIds,
         album = album,
         durationMs = duration?.totalMilliseconds ?: trackDuration?.totalMilliseconds,
-        image = image
+        image = image,
+        playable = playability?.playable != false
     )
 }
 
@@ -603,13 +714,75 @@ internal fun AlbumUnionDto.toDetail(fallbackId: String? = null): SpotifyAlbumDet
 
 internal fun ArtistUnionDto.toDetail(fallbackId: String? = null): SpotifyArtistDetail? {
     val displayName = profile?.name?.takeIf { it.isNotBlank() } ?: return null
+    val galleryImages = visuals?.gallery?.items?.mapNotNull { it.best() }.orEmpty()
+    val bannerImage = headerImage?.best()
+        ?: visuals?.headerImage?.best()
+        ?: galleryImages.firstOrNull()
+    val links = profile.externalLinks?.items?.mapNotNull { link ->
+        val url = link.url?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        SpotifyExternalLink(
+            name = link.name?.takeIf { it.isNotBlank() } ?: "LINK",
+            url = url
+        )
+    }.orEmpty()
+    val cities = stats?.topCities?.items?.mapNotNull { city ->
+        val cityName = city.city?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        SpotifyTopCity(
+            city = cityName,
+            country = city.country.orEmpty(),
+            region = city.region?.takeIf { it.isNotBlank() },
+            numberOfListeners = city.numberOfListeners ?: 0L
+        )
+    }.orEmpty()
+    val pinned = profile.pinnedItem?.let { pin ->
+        val inner = pin.itemV2?.data
+        val pinTitle = (pin.title ?: inner?.name ?: inner?.title)?.takeIf { it.isNotBlank() }
+            ?: return@let null
+        val pinUri = pin.uri ?: inner?.uri
+        SpotifyPinnedPick(
+            title = pinTitle,
+            subtitle = pin.subtitle?.takeIf { it.isNotBlank() },
+            comment = pin.comment?.takeIf { it.isNotBlank() },
+            type = (pin.type ?: inner?.type)?.takeIf { it.isNotBlank() },
+            id = pinUri?.idFromUri()?.takeIf { it.isNotBlank() },
+            uri = pinUri,
+            image = pin.thumbnailImage?.best()
+                ?: inner?.coverArt?.best()
+                ?: inner?.images?.items?.firstOrNull()?.best()
+                ?: pin.backgroundImageV2?.best()
+        )
+    }
+    val artistPlaylists = buildList {
+        addAll(profile.playlistsV2?.items.orEmpty())
+        addAll(relatedContent?.featuringV2?.items.orEmpty())
+        addAll(relatedContent?.discoveredOnV2?.items.orEmpty())
+    }.mapNotNull { wrapper ->
+        val p = wrapper.data ?: return@mapNotNull null
+        val pName = p.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val pId = p.uri?.idFromUri()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        SpotifyPlaylist(
+            id = pId,
+            uri = p.uri.orEmpty(),
+            name = pName,
+            owner = p.ownerV2?.data?.name ?: p.ownerV2?.data?.username,
+            image = p.images?.items?.firstOrNull()?.best()
+        )
+    }.distinctBy { it.id }
+
     return SpotifyArtistDetail(
         id = id ?: uri?.idFromUri() ?: fallbackId.orEmpty(),
         name = displayName,
         uri = uri.orEmpty(),
         image = visuals?.avatarImage?.best(),
+        banner = bannerImage,
+        gallery = galleryImages,
+        verified = profile.verified == true,
         monthlyListeners = stats?.monthlyListeners,
         followers = stats?.followers,
+        worldRank = stats?.worldRank?.takeIf { it > 0 },
+        topCities = cities,
+        externalLinks = links,
+        pinnedPick = pinned,
         biography = profile.biography?.text?.takeIf { it.isNotBlank() },
         topTracks = discography?.topTracks?.items?.mapNotNull { it.track?.toTrack() }.orEmpty(),
         albums = discography?.albums?.items
@@ -618,22 +791,26 @@ internal fun ArtistUnionDto.toDetail(fallbackId: String? = null): SpotifyArtistD
         singles = discography?.singles?.items
             ?.mapNotNull { it.releases?.items?.firstOrNull()?.toAlbum() }
             .orEmpty(),
+        playlists = artistPlaylists,
         relatedArtists = relatedContent?.relatedArtists?.items?.map { it.toArtist() }.orEmpty()
     )
 }
 
 internal fun PlaylistV2Dto.toDetail(fallbackId: String? = null): SpotifyPlaylistDetail? {
     val displayName = name?.takeIf { it.isNotBlank() } ?: return null
+    val mappedTracks = content?.items?.mapNotNull { it.itemV2?.data?.toTrack() }.orEmpty()
+    val cover = images?.items?.firstOrNull()?.best()
+        ?: mappedTracks.firstNotNullOfOrNull { it.image.normalizeSpotifyImageUrl() }
     return SpotifyPlaylistDetail(
         id = uri?.idFromUri() ?: fallbackId.orEmpty(),
         name = displayName,
         uri = uri.orEmpty(),
         description = description?.takeIf { it.isNotBlank() },
         owner = ownerV2?.data?.name ?: ownerV2?.data?.username,
-        image = images?.items?.firstOrNull()?.best(),
+        image = cover,
         followers = followers,
         totalTracks = content?.totalCount ?: content?.items?.size ?: 0,
-        tracks = content?.items?.mapNotNull { it.itemV2?.data?.toTrack() }.orEmpty()
+        tracks = mappedTracks
     )
 }
 

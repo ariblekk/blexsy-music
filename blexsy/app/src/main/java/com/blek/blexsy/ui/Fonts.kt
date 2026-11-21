@@ -2,6 +2,7 @@ package com.blek.blexsy.ui
 
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.blek.blexsy.R
@@ -14,10 +15,12 @@ import com.blek.blexsy.R
  *
  * - [HeadingFont]  hero / section / display titles
  * - [SansFont]     every other piece of UI text
+ * - [LyricsFont]   synced & plain lyrics presentation
  * - [MonoFont]     numeric text (durations, ranks, counters, equalizer values)
  */
 val HeadingFont: FontFamily = headingFamily()
-val SansFont: FontFamily = variableFamily(R.font.manrope_variable)
+val SansFont: FontFamily = sfProFamily()
+val LyricsFont: FontFamily = sfProDisplayFamily()
 val MonoFont: FontFamily = variableFamily(R.font.jetbrainsmono_variable)
 
 /** Weights exposed by every variable font used here (wght axis 400–800). */
@@ -33,6 +36,24 @@ private fun variableWeights(): List<Pair<Int, FontWeight>> = listOf(
 private fun headingFamily(): FontFamily = FontFamily(
     Font(R.font.deezer_bold, FontWeight.Bold),
     Font(R.font.deezer_extrabold, FontWeight.ExtraBold)
+)
+
+/** Apple San Francisco Pro Text family (Regular 400 through Heavy 800). */
+private fun sfProFamily(): FontFamily = FontFamily(
+    Font(R.font.sf_pro_regular, FontWeight.Normal),
+    Font(R.font.sf_pro_medium, FontWeight.Medium),
+    Font(R.font.sf_pro_semibold, FontWeight.SemiBold),
+    Font(R.font.sf_pro_bold, FontWeight.Bold),
+    Font(R.font.sf_pro_heavy, FontWeight.ExtraBold)
+)
+
+/** Apple San Francisco Pro Display family for large lyrics typography (including true italic for backing vocals). */
+private fun sfProDisplayFamily(): FontFamily = FontFamily(
+    Font(R.font.sf_pro_display_medium, FontWeight.Medium),
+    Font(R.font.sf_pro_display_medium_italic, FontWeight.Medium, FontStyle.Italic),
+    Font(R.font.sf_pro_display_semibold, FontWeight.SemiBold),
+    Font(R.font.sf_pro_display_bold, FontWeight.Bold),
+    Font(R.font.sf_pro_display_heavy, FontWeight.ExtraBold)
 )
 
 /** Builds a family from one variable font file, wiring each weight to its `wght` axis value. */

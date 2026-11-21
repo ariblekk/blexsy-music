@@ -2,6 +2,7 @@ package com.blek.blexsy.data
 
 import com.blek.blexsy.model.Playlist
 import com.blek.blexsy.model.Track
+import com.blek.blexsy.model.isSpotifyCatalogId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,7 @@ class LibraryRepository(
 
     fun isFavorite(trackId: String): Boolean = _favorites.value.any { it.id == trackId }
 
-    /** Flip the heart instantly. */
+    /** Flip the heart instantly and sync to linked Spotify account in the background. */
     fun toggleFavorite(track: Track) {
         val liked = _favorites.value.none { it.id == track.id }
         val next = if (liked) {
@@ -40,6 +41,7 @@ class LibraryRepository(
             _favorites.value.filterNot { it.id == track.id }
         }
         writeFavorites(next)
+        SpotifyAuthManager.pushTrackLikeStateAsync(track.id, liked)
     }
 
     /** Record a spin: bump the play count and move the track to the top of the history. */
@@ -61,16 +63,28 @@ class LibraryRepository(
         val updated = (listOf(trackWithCount) + _recentTracks.value.filterNot { it.id == trackWithCount.id })
             .take(MAX_RECENT_TRACKS)
         writeRecent(updated)
+        SpotifyAuthManager.pushRecentTracksAsync(updated)
     }
 
     fun createPlaylist(name: String, tracks: List<Track> = emptyList()): Playlist {
+        val localId = "pl-" + UUID.randomUUID()
         val playlist = Playlist(
-            id = "pl-" + UUID.randomUUID(),
+            id = localId,
             name = name,
             tracks = tracks,
             updatedAt = System.currentTimeMillis()
         )
         writePlaylists(_playlists.value + playlist)
+        SpotifyAuthManager.pushCreatePlaylistAsync(name, tracks) { spotifyPrefixedId ->
+            val current = _playlists.value
+            if (current.any { it.id == localId }) {
+                writePlaylists(
+                    current.map { pl ->
+                        if (pl.id == localId) pl.copy(id = spotifyPrefixedId) else pl
+                    }
+                )
+            }
+        }
         return playlist
     }
 
@@ -83,10 +97,79 @@ class LibraryRepository(
             updatedAt = System.currentTimeMillis()
         )
         writePlaylists(current.map { if (it.id == target.id) updated else it })
+        SpotifyAuthManager.pushAddTrackToPlaylistAsync(target.id, track.id)
+    }
+
+    fun removeTrackFromPlaylist(playlistId: String, trackId: String) {
+        val current = _playlists.value
+        val target = current.firstOrNull { it.id == playlistId } ?: return
+        if (target.tracks.none { it.id == trackId }) return
+        val updated = target.copy(
+            tracks = target.tracks.filterNot { it.id == trackId },
+            updatedAt = System.currentTimeMillis()
+        )
+        writePlaylists(current.map { if (it.id == target.id) updated else it })
+        SpotifyAuthManager.pushRemoveTrackFromPlaylistAsync(target.id, trackId)
     }
 
     fun deletePlaylist(playlist: Playlist) {
         writePlaylists(_playlists.value.filterNot { it.id == playlist.id })
+        SpotifyAuthManager.pushUnfollowPlaylistAsync(playlist.id)
+    }
+
+    fun replacePlaylists(updated: List<Playlist>) {
+        writePlaylists(updated)
+    }
+
+    /**
+     * Merges Liked Songs, Playlists, and Recently Played tracks fetched from a linked Spotify account
+     * into the local library without losing local-only items.
+     */
+    fun mergeSpotifySync(
+        spotifyLikes: List<Track>,
+        spotifyPlaylists: List<Playlist>,
+        spotifyRecents: List<Track>
+    ) {
+        if (spotifyLikes.isNotEmpty()) {
+            // Keep purely local/non-Spotify favorites, and mirror the latest Spotify Liked Songs order & removals
+            val localOnlyLikes = _favorites.value.filterNot { it.id.isSpotifyCatalogId() }
+            val mergedLikes = (spotifyLikes + localOnlyLikes).distinctBy { it.id }
+            writeFavorites(mergedLikes)
+        }
+        if (spotifyPlaylists.isNotEmpty()) {
+            val visibleSpotifyPlaylists = spotifyPlaylists.filterNot {
+                it.name.trim().equals(".blexsy-history", ignoreCase = true)
+            }
+            val incomingIds = visibleSpotifyPlaylists.map { it.id }.toSet()
+            // Keep only purely local ('pl-') playlists; any removed 'sp-' playlist on Spotify is dropped
+            val keptLocal = _playlists.value.filterNot {
+                it.id in incomingIds ||
+                    it.id.startsWith("sp-") ||
+                    it.name.trim().equals(".blexsy-history", ignoreCase = true)
+            }
+            writePlaylists(visibleSpotifyPlaylists + keptLocal)
+        }
+        if (spotifyRecents.isNotEmpty()) {
+            mergeCloudRecentTracks(spotifyRecents)
+        }
+    }
+
+    /**
+     * Merges cross-device cloud recent tracks (`.blexsy-history`) with local recent tracks,
+     * placing the latest cloud history at the top so Phone A and Phone B stay in sync.
+     */
+    fun mergeCloudRecentTracks(cloudRecents: List<Track>): List<Track> {
+        if (cloudRecents.isEmpty()) return _recentTracks.value
+        val counts = _playCounts.value
+        val merged = (cloudRecents + _recentTracks.value)
+            .distinctBy { it.id }
+            .map { track ->
+                val count = counts[track.id] ?: track.playCount
+                if (count != null && count != track.playCount) track.copy(playCount = count) else track
+            }
+            .take(MAX_RECENT_TRACKS)
+        writeRecent(merged)
+        return merged
     }
 
     /** Re-reads the persisted mirror. Kept for callers that used to trigger a server pull. */

@@ -39,7 +39,9 @@ internal fun PlayerCoverView(
     onMoreClick: () -> Unit,
     onArtistClick: (() -> Unit)?,
     sharedScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    isFavorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         PlayerHeaderLabel(
@@ -120,6 +122,20 @@ internal fun PlayerCoverView(
                             Modifier.clickable(onClick = onArtistClick)
                         } else Modifier
                     )
+                }
+
+                if (onToggleFavorite != null) {
+                    IconButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) IcCheckCircleFilled else IcPlusCircleOutline,
+                            contentDescription = stringResource(if (isFavorite) R.string.player_remove_favorite else R.string.player_save_favorite),
+                            tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextMuted,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 IconButton(

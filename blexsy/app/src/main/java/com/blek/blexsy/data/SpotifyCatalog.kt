@@ -3,7 +3,10 @@ package com.blek.blexsy.data
 import com.blek.blexsy.model.AlbumDetail
 import com.blek.blexsy.model.AlbumSummary
 import com.blek.blexsy.model.ArtistDetail
+import com.blek.blexsy.model.ArtistPinnedPick
+import com.blek.blexsy.model.ArtistSocialLink
 import com.blek.blexsy.model.ArtistSummary
+import com.blek.blexsy.model.ArtistTopCity
 import com.blek.blexsy.model.ChartFeed
 import com.blek.blexsy.model.ChartRank
 import com.blek.blexsy.model.GenrePlaylist
@@ -30,7 +33,8 @@ internal fun SpotifyTrack.toTrack(
     image = image ?: imageFallback,
     // The track's own cast wins; the album/artist shelf ids are only a fallback.
     artistIds = artistIds.ifEmpty { artistIdsFallback },
-    durationMs = durationMs
+    durationMs = durationMs,
+    isPlayable = playable
 )
 
 internal fun SpotifyArtist.toArtistSummary(): ArtistSummary = ArtistSummary(
@@ -73,20 +77,58 @@ internal fun SpotifyAlbumDetail.toAlbumDetail(): AlbumDetail {
 internal fun SpotifyArtistDetail.toArtistDetail(): ArtistDetail = ArtistDetail(
     id = id,
     name = name,
+    uri = uri,
     image = image,
+    banner = banner,
+    gallery = gallery,
+    verified = verified,
     biography = biography,
     followers = followers?.toCatalogInt(),
     monthlyListeners = monthlyListeners?.toCatalogInt(),
+    worldRank = worldRank,
+    topCities = topCities.map {
+        ArtistTopCity(
+            city = it.city,
+            country = it.country,
+            region = it.region,
+            listeners = it.numberOfListeners.toCatalogInt()
+        )
+    },
+    externalLinks = externalLinks.map {
+        ArtistSocialLink(name = it.name, url = it.url)
+    },
+    pinnedPick = pinnedPick?.let {
+        ArtistPinnedPick(
+            title = it.title,
+            subtitle = it.subtitle,
+            comment = it.comment,
+            type = it.type,
+            id = it.id,
+            uri = it.uri,
+            image = it.image
+        )
+    },
     topTracks = topTracks.map { it.toTrack(artistIdsFallback = listOf(id), imageFallback = image) },
     albums = albums.map { it.toAlbumSummary() },
     singlesAndEps = singles.map { it.toAlbumSummary() },
+    playlists = playlists.map {
+        AlbumSummary(
+            id = it.id,
+            name = it.name,
+            artist = it.owner,
+            image = it.image,
+            year = it.owner?.let { owner -> "By $owner" },
+            type = "PLAYLIST"
+        )
+    },
     similarArtists = relatedArtists.map { it.toArtistSummary() }
 )
 
 internal fun SpotifyPlaylistDetail.toPlaylist(): Playlist = Playlist(
     id = id,
     name = name,
-    tracks = tracks.map { it.toTrack(imageFallback = image) }
+    image = image,
+    tracks = tracks.map { it.toTrack() }
 )
 
 /**

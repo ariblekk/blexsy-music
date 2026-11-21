@@ -794,3 +794,32 @@ val IcTrashOutline: ImageVector by lazy {
 }
 
 
+val IcPlusCircleOutline: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "IcPlusCircleOutline",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 256f,
+        viewportHeight = 256f
+    ).apply {
+        addPath(
+            pathData = addPathNodes("M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a8,8,0,0,1-8,8H136v32a8,8,0,0,1-16,0V136H88a8,8,0,0,1,0-16h32V88a8,8,0,0,1,16,0v32h32A8,8,0,0,1,176,128Z"),
+            fill = SolidColor(Color.Black)
+        )
+    }.build()
+}
+
+val IcCheckCircleFilled: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "IcCheckCircleFilled",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 256f,
+        viewportHeight = 256f
+    ).apply {
+        addPath(
+            pathData = addPathNodes("M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"),
+            fill = SolidColor(Color.Black)
+        )
+    }.build()
+}

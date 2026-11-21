@@ -98,13 +98,19 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            contentAlignment = Alignment.TopCenter
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
             // Audio Quality
             item {
                 SettingsGroup(title = stringResource(R.string.settings_group_sound)) {
@@ -319,6 +325,7 @@ fun SettingsScreen(
                         )
                     )
                 }
+            }
             }
         }
     }

@@ -481,9 +481,11 @@ internal fun LazyListScope.recentPlayedSection(
 
 internal fun LazyListScope.browseCategoriesSection(
     categories: List<SpotifyBrowseCategory>,
-    onCategoryClick: (SpotifyBrowseCategory) -> Unit
+    onCategoryClick: (SpotifyBrowseCategory) -> Unit,
+    columns: Int = 2
 ) {
     if (categories.isEmpty()) return
+    val colCount = columns.coerceAtLeast(2)
 
     item {
         Text(
@@ -493,7 +495,7 @@ internal fun LazyListScope.browseCategoriesSection(
         )
     }
 
-    items(categories.chunked(2), key = { pair -> pair.joinToString("-") { it.id } }) { row ->
+    items(categories.chunked(colCount), key = { pair -> pair.joinToString("-") { it.id } }) { row ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -507,7 +509,7 @@ internal fun LazyListScope.browseCategoriesSection(
                     onClick = { onCategoryClick(category) }
                 )
             }
-            if (row.size == 1) {
+            repeat(colCount - row.size) {
                 Spacer(modifier = Modifier.weight(1f))
             }
         }

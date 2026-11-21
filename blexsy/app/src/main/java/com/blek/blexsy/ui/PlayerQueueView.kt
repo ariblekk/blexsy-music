@@ -75,7 +75,8 @@ internal fun PlayerQueueView(
     onMoreClick: () -> Unit,
     onArtistClick: (() -> Unit)?,
     sharedScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    showFloatingTrackCard: Boolean = true
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         val contextTitle by player.contextTitle.collectAsState()
@@ -134,7 +135,11 @@ internal fun PlayerQueueView(
             }
             // ponytail: dynamic top offset for radio / playlist subtitle; upgrade to onGloballyPositioned if header content varies further.
             val hasSubtitle = (queueSource == QueueSource.RADIO && radioSeedTrack != null) || !currentContextTitle.isNullOrBlank()
-            val listTopPadding = if (hasSubtitle) 116.dp else 96.dp
+            val listTopPadding = if (showFloatingTrackCard) {
+                if (hasSubtitle) 116.dp else 96.dp
+            } else {
+                if (hasSubtitle) 56.dp else 40.dp
+            }
 
             LazyColumn(
                 modifier = Modifier
@@ -446,15 +451,17 @@ internal fun PlayerQueueView(
                 }
             }
 
-            PlayerGlassTrackCard(
-                track = track,
-                dominantColor = dominantColor,
-                sharedScope = sharedScope,
-                animatedVisibilityScope = animatedVisibilityScope,
-                onCoverClick = onCoverClick,
-                onMoreClick = onMoreClick,
-                onArtistClick = onArtistClick
-            )
+            if (showFloatingTrackCard) {
+                PlayerGlassTrackCard(
+                    track = track,
+                    dominantColor = dominantColor,
+                    sharedScope = sharedScope,
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    onCoverClick = onCoverClick,
+                    onMoreClick = onMoreClick,
+                    onArtistClick = onArtistClick
+                )
+            }
         }
 
     }

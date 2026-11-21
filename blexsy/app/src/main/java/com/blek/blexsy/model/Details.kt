@@ -45,13 +45,45 @@ data class ArtistSummary(
 }
 
 @Serializable
+data class ArtistSocialLink(
+    val name: String = "",
+    val url: String = ""
+)
+
+@Serializable
+data class ArtistTopCity(
+    val city: String = "",
+    val country: String = "",
+    val region: String? = null,
+    val listeners: Int = 0
+)
+
+@Serializable
+data class ArtistPinnedPick(
+    val title: String = "",
+    val subtitle: String? = null,
+    val comment: String? = null,
+    val type: String? = null,
+    val id: String? = null,
+    val uri: String? = null,
+    val image: String? = null
+)
+
+@Serializable
 data class ArtistDetail(
     val id: String = "",
     val name: String = "Artist",
+    val uri: String = "",
     val image: String? = null,
+    val banner: String? = null,
+    val gallery: List<String> = emptyList(),
     val biography: String? = null,
     val followers: Int? = null,
     @SerialName("monthly_listeners") val monthlyListeners: Int? = null,
+    val worldRank: Int? = null,
+    val topCities: List<ArtistTopCity> = emptyList(),
+    val externalLinks: List<ArtistSocialLink> = emptyList(),
+    val pinnedPick: ArtistPinnedPick? = null,
     @SerialName("top_tracks") val topTracks: List<Track> = emptyList(),
     val albums: List<AlbumSummary> = emptyList(),
     val singlesAndEps: List<AlbumSummary> = emptyList(),

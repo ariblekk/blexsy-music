@@ -41,6 +41,9 @@ internal fun SearchTab(
     onClearHistory: () -> Unit,
     onRemoveHistory: (String) -> Unit = {}
 ) {
+    val layout = rememberBlexsyLayoutSpec()
+    val categoryColumns = layout.gridColumns(minItemWidthDp = 180, maxColumns = 5)
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -93,7 +96,8 @@ internal fun SearchTab(
             }
             browseCategoriesSection(
                 categories = categories,
-                onCategoryClick = onCategoryClick
+                onCategoryClick = onCategoryClick,
+                columns = categoryColumns
             )
         }
 

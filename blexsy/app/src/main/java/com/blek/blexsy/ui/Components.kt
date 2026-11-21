@@ -33,6 +33,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -104,28 +105,18 @@ private fun String.titleCased(): String =
         part.replaceFirstChar { it.uppercase() }
     }
 
-/** Spotify-style brand mark: green circle with a black note. */
+/** Brand mark: application launcher icon alongside the dynamic app name. */
 @Composable
 fun BrandMark(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(BlexsyColors.Primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = IcMusicNote,
-                contentDescription = null,
-                tint = Color.Black,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(9.dp))
+        AppLauncherIcon(
+            size = 34.dp,
+            shape = RoundedCornerShape(10.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = BlexsyThemeConfig.appName.uppercase(),
             color = BlexsyColors.TextPrimary,
@@ -321,10 +312,12 @@ fun BottomNav(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             modifier = Modifier
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .height(58.dp),
             shape = CircleShape,
@@ -579,7 +572,8 @@ fun TrackCard(
             .width(152.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(BlexsyColors.Surface)
-            .clickable(onClick = onClick)
+            .clickable(enabled = track.isPlayable, onClick = onClick)
+            .alpha(if (track.isPlayable) 1f else 0.42f)
     ) {
         Box(
             modifier = Modifier
@@ -747,10 +741,11 @@ fun TrackTile(
     showRank: Boolean = true,
     onMore: (() -> Unit)? = null
 ) {
+    val contentAlpha = if (track.isPlayable) 1f else 0.42f
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = track.isPlayable, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -758,7 +753,9 @@ fun TrackTile(
 
         if (showRank && rankNumber != null) {
             Column(
-                modifier = Modifier.width(28.dp),
+                modifier = Modifier
+                    .width(28.dp)
+                    .then(if (track.isPlayable) Modifier else Modifier.alpha(contentAlpha)),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -813,11 +810,20 @@ fun TrackTile(
         }
 
         if (showArtwork) {
-            CoverImage(url = track.image, size = 48, shapeRadius = 4)
+            CoverImage(
+                url = track.image,
+                size = 48,
+                shapeRadius = 4,
+                modifier = if (track.isPlayable) Modifier else Modifier.alpha(contentAlpha)
+            )
             Spacer(modifier = Modifier.width(12.dp))
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .then(if (track.isPlayable) Modifier else Modifier.alpha(contentAlpha))
+        ) {
             Text(
                 text = track.displayTitle,
                 style = if (isPlayingThis) BlexsyTypography.TitleActive else BlexsyTypography.Title,
@@ -858,10 +864,10 @@ fun TrackTile(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = if (isFavorite) IcHeartFilled else IcHeartOutline,
+                    imageVector = if (isFavorite) IcCheckCircleFilled else IcPlusCircleOutline,
                     contentDescription = stringResource(if (isFavorite) R.string.player_remove_favorite else R.string.player_save_favorite),
                     tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextMuted,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -893,6 +899,7 @@ fun TrackOptionsSheet(
     isFavorite: Boolean = false,
     onDismiss: () -> Unit,
     onAddToPlaylist: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     onOpenAlbum: (() -> Unit)? = null,
     onOpenArtist: (() -> Unit)? = null,
@@ -957,12 +964,40 @@ fun TrackOptionsSheet(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                if (onToggleFavorite != null) {
+                    IconButton(
+                        onClick = { runThenDismiss(onToggleFavorite) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) IcCheckCircleFilled else IcPlusCircleOutline,
+                            contentDescription = stringResource(if (isFavorite) R.string.player_remove_favorite else R.string.player_save_favorite),
+                            tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            val favLabel = stringResource(if (isFavorite) R.string.player_remove_favorite else R.string.player_save_favorite)
             val options = listOfNotNull(
+                onToggleFavorite?.let {
+                    SheetOptionItem(
+                        icon = if (isFavorite) IcCheckCircleFilled else IcPlusCircleOutline,
+                        label = favLabel,
+                        tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextPrimary
+                    ) { runThenDismiss(it) }
+                },
                 onAddToPlaylist?.let { SheetOptionItem(IcPlaylist, stringResource(R.string.player_add_to_playlist)) { runThenDismiss(it) } },
+                onRemoveFromPlaylist?.let {
+                    SheetOptionItem(
+                        icon = IcTrashOutline,
+                        label = "Hapus dari Playlist",
+                        tint = BlexsyColors.Danger
+                    ) { runThenDismiss(it) }
+                },
                 onAddToQueue?.let { SheetOptionItem(IcQueue, stringResource(R.string.player_toss_queue)) { runThenDismiss(it) } },
                 onOpenAlbum?.let { SheetOptionItem(IcDisc, stringResource(R.string.player_view_album)) { runThenDismiss(it) } },
                 onOpenArtist?.let { SheetOptionItem(IcUser, stringResource(R.string.player_view_artist)) { runThenDismiss(it) } },
@@ -977,12 +1012,15 @@ fun TrackOptionsSheet(
     }
 }
 
-/** Bottom sheet to pick an existing playlist for a track, with a button to create one. */
+/** Spotify-style "Save to" bottom sheet: toggles Liked Songs and any user playlist for a track. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToPlaylistSheet(
     track: Track,
     playlists: List<Playlist>,
+    isLiked: Boolean = false,
+    likedCount: Int = 0,
+    onToggleLiked: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSelectPlaylist: (Playlist) -> Unit,
     onCreatePlaylist: () -> Unit
@@ -1023,40 +1061,43 @@ fun AddToPlaylistSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (playlists.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.playlist_empty_title),
-                    style = BlexsyTypography.BodyMuted,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                ) {
-                    items(playlists) { playlist ->
-                        val isAlreadyIn = playlist.tracks.any { it.id == track.id }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+            ) {
+                if (onToggleLiked != null) {
+                    item(key = "liked-songs-row") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable { runThenDismiss { onSelectPlaylist(playlist) } }
+                                .clickable { onToggleLiked() }
                                 .padding(horizontal = 8.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CoverImage(
-                                url = playlist.tracks.firstOrNull()?.image,
-                                size = 48,
-                                shapeRadius = 6
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(Color(0xFF6A4BA8), Color(0xFF3B2A5C))
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = IcHeartFilled,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = playlist.name,
+                                    text = stringResource(R.string.library_liked_bangers),
                                     style = BlexsyTypography.Title.copy(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.SemiBold
@@ -1066,33 +1107,89 @@ fun AddToPlaylistSheet(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(R.string.playlist_tracks_count, playlist.tracks.size),
+                                    text = stringResource(R.string.playlist_tracks_count, likedCount),
                                     style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp)
                                 )
                             }
-                            if (isAlreadyIn) {
-                                Icon(
-                                    imageVector = IcCheck,
-                                    contentDescription = stringResource(R.string.playlist_track_added),
-                                    tint = BlexsyColors.Primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = if (isLiked) IcCheckCircleFilled else IcPlusCircleOutline,
+                                contentDescription = stringResource(R.string.playlist_track_added),
+                                tint = if (isLiked) BlexsyColors.Primary else BlexsyColors.TextMuted,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
+                    }
+                }
+
+                items(playlists, key = { it.id }) { playlist ->
+                    val isAlreadyIn = playlist.tracks.any { it.id == track.id }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSelectPlaylist(playlist) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CoverImage(
+                            url = playlist.coverImage,
+                            size = 48,
+                            shapeRadius = 6
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = playlist.name,
+                                style = BlexsyTypography.Title.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.playlist_tracks_count, playlist.tracks.size),
+                                style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp)
+                            )
+                        }
+                        Icon(
+                            imageVector = if (isAlreadyIn) IcCheckCircleFilled else IcPlusCircleOutline,
+                            contentDescription = stringResource(R.string.playlist_track_added),
+                            tint = if (isAlreadyIn) BlexsyColors.Primary else BlexsyColors.TextMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            BlexsyButton(
-                text = stringResource(R.string.playlist_create_new),
-                leadingIcon = IcPlus,
-                onClick = { runThenDismiss(onCreatePlaylist) },
-                variant = ButtonVariant.Secondary,
-                size = ButtonSize.Lg,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                BlexsyButton(
+                    text = stringResource(R.string.playlist_create_new),
+                    leadingIcon = IcPlus,
+                    onClick = { runThenDismiss(onCreatePlaylist) },
+                    variant = ButtonVariant.Secondary,
+                    size = ButtonSize.Lg,
+                    modifier = Modifier.weight(1f)
+                )
+                BlexsyButton(
+                    text = "Done",
+                    leadingIcon = IcCheck,
+                    onClick = {
+                        scope.launch {
+                            sheetState.hide()
+                            onDismiss()
+                        }
+                    },
+                    variant = ButtonVariant.Primary,
+                    size = ButtonSize.Lg
+                )
+            }
         }
     }
 }

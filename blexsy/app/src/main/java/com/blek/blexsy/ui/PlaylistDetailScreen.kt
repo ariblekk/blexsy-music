@@ -39,6 +39,8 @@ fun PlaylistDetailScreen(
     player: BlexsyAudioPlayer,
     onBack: () -> Unit,
     onDeletePlaylist: (() -> Unit)? = null,
+    favorites: List<Track> = emptyList(),
+    onToggleFavorite: ((Track) -> Unit)? = null,
     onTrackOptions: (Track, List<Track>) -> Unit,
     onExpandPlayer: () -> Unit = {},
     bottomNav: (@Composable () -> Unit)? = null
@@ -55,11 +57,12 @@ fun PlaylistDetailScreen(
         }
     }
 
+    val layout = rememberBlexsyLayoutSpec()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentBottomPadding = if (bottomNav != null) {
         bottomInset + (if (activeTrack != null) 160.dp else 90.dp)
     } else {
-        bottomInset + (if (activeTrack != null) 72.dp else 28.dp)
+        bottomInset + (if (activeTrack != null) 88.dp else 28.dp)
     }
 
     val isPlaylistPlaying = isPlaying && tracks.any { it.id == activeTrack?.id }
@@ -76,66 +79,38 @@ fun PlaylistDetailScreen(
                 )
             )
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = contentBottomPadding)
-        ) {
-            // Full Width Playlist Hero extending down to the play button
-            item {
-                Box(
+        if (layout.useTwoPaneDetail) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Left Pane: Pinned Playlist Cover, Metadata & Play CTA
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(380.dp)
-                        .clipToBounds()
+                        .width(300.dp)
+                        .fillMaxHeight()
+                        .padding(top = 8.dp, bottom = contentBottomPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AsyncImage(
-                        model = imageUrl.toHighResArtwork(),
-                        contentDescription = title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                translationY = listState.firstVisibleItemScrollOffset * 0.45f
-                            }
-                    )
-                    // Top shadow scrim for status bar / back button readability
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    0f to Color.Black.copy(alpha = 0.55f),
-                                    1f to Color.Transparent
-                                )
-                            )
-                    )
-                    // Bottom shadow gradient blending smoothly into the screen background
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0.00f to Color.Transparent,
-                                    0.45f to Color.Transparent,
-                                    0.70f to dominantColor.copy(alpha = 0.50f),
-                                    0.88f to dominantColor.copy(alpha = 0.90f),
-                                    1.00f to dominantColor
-                                )
-                            )
-                    )
-                    // Centered playlist info and elongated play button
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 20.dp)
-                            .graphicsLayer {
-                                alpha = (1f - (listState.firstVisibleItemScrollOffset / 400f)).coerceIn(0f, 1f)
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = IcArrowLeft,
+                                contentDescription = stringResource(R.string.action_back),
+                                tint = BlexsyColors.TextPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = stringResource(R.string.playlist_kicker),
                             style = BlexsyTypography.Caption.copy(
@@ -144,136 +119,326 @@ fun PlaylistDetailScreen(
                                 letterSpacing = 1.2.sp,
                                 color = Color.White.copy(alpha = 0.85f)
                             ),
-                            textAlign = TextAlign.Center
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        if (onDeletePlaylist != null) {
+                            IconButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = IcTrashFilled,
+                                    contentDescription = stringResource(R.string.playlist_delete_content_desc),
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    CoverImage(
+                        url = imageUrl,
+                        size = 0,
+                        shapeRadius = 12,
+                        modifier = Modifier
+                            .widthIn(max = 240.dp)
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = title,
+                        style = BlexsyTypography.Display.copy(
+                            fontSize = 24.sp,
+                            lineHeight = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    description?.let { desc ->
                         Text(
-                            text = title,
-                            style = BlexsyTypography.Display.copy(
-                                fontSize = 28.sp,
-                                lineHeight = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                            text = desc,
+                            style = BlexsyTypography.Subtitle.copy(
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.85f)
                             ),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        description?.let { desc ->
-                            Text(
-                                text = desc,
-                                style = BlexsyTypography.Subtitle.copy(
-                                    fontSize = 13.sp,
-                                    color = Color.White.copy(alpha = 0.85f)
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-                        if (isLoading) {
-                            SkeletonLine(modifier = Modifier.width(96.dp), height = 12.dp)
-                        } else {
-                            Text(
-                                text = stringResource(R.string.playlist_tracks_bangers, tracks.size),
-                                style = BlexsyTypography.Caption.copy(
-                                    color = Color.White.copy(alpha = 0.8f)
-                                ),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        if (!isLoading && tracks.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(18.dp))
-                            BlexsyButton(
-                                text = stringResource(if (isPlaylistPlaying) R.string.player_pause else R.string.player_play),
-                                onClick = {
-                                    if (isPlaylistPlaying) {
-                                        player.pause()
-                                    } else {
-                                        player.play(tracks.first(), tracks, title)
-                                    }
-                                },
-                                leadingIcon = if (isPlaylistPlaying) IcPause else IcPlay,
-                                variant = ButtonVariant.Primary,
-                                size = ButtonSize.Md,
-                                modifier = Modifier.widthIn(min = 160.dp, max = 220.dp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                    if (isLoading) {
+                        SkeletonLine(modifier = Modifier.width(96.dp), height = 12.dp)
+                    } else {
+                        Text(
+                            text = stringResource(R.string.playlist_tracks_bangers, tracks.size),
+                            style = BlexsyTypography.Caption.copy(
+                                color = Color.White.copy(alpha = 0.8f)
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    if (!isLoading && tracks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(18.dp))
+                        BlexsyButton(
+                            text = stringResource(if (isPlaylistPlaying) R.string.player_pause else R.string.player_play),
+                            onClick = {
+                                if (isPlaylistPlaying) {
+                                    player.pause()
+                                } else {
+                                    player.play(tracks.first(), tracks, title)
+                                }
+                            },
+                            leadingIcon = if (isPlaylistPlaying) IcPause else IcPlay,
+                            variant = ButtonVariant.Primary,
+                            size = ButtonSize.Md,
+                            modifier = Modifier.widthIn(min = 160.dp, max = 220.dp)
+                        )
+                    }
+                }
+
+                // Right Pane: Scrollable Track List
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = contentBottomPadding)
+                ) {
+                    if (isLoading) {
+                        items(8) { SkeletonTrackRow() }
+                    } else {
+                        itemsIndexed(tracks) { index, track ->
+                            TrackTile(
+                                track = track,
+                                index = index,
+                                isPlayingThis = activeTrack?.id == track.id,
+                                isFavorite = favorites.any { it.id == track.id },
+                                onToggleFavorite = onToggleFavorite?.let { cb -> { cb(track) } },
+                                onClick = { player.play(track, tracks, title) },
+                                onMore = { onTrackOptions(track, tracks) }
                             )
                         }
                     }
                 }
             }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = contentBottomPadding)
+            ) {
+                // Full Width Playlist Hero extending down to the play button
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(380.dp)
+                            .clipToBounds()
+                    ) {
+                        AsyncImage(
+                            model = imageUrl.toHighResArtwork(),
+                            contentDescription = title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    translationY = listState.firstVisibleItemScrollOffset * 0.45f
+                                }
+                        )
+                        // Top shadow scrim for status bar / back button readability
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to Color.Black.copy(alpha = 0.55f),
+                                        1f to Color.Transparent
+                                    )
+                                )
+                        )
+                        // Bottom shadow gradient blending smoothly into the screen background
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        0.00f to Color.Transparent,
+                                        0.45f to Color.Transparent,
+                                        0.70f to dominantColor.copy(alpha = 0.50f),
+                                        0.88f to dominantColor.copy(alpha = 0.90f),
+                                        1.00f to dominantColor
+                                    )
+                                )
+                        )
+                        // Centered playlist info and elongated play button
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 20.dp)
+                                .graphicsLayer {
+                                    alpha = (1f - (listState.firstVisibleItemScrollOffset / 400f)).coerceIn(0f, 1f)
+                                },
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.playlist_kicker),
+                                style = BlexsyTypography.Caption.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.2.sp,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = title,
+                                style = BlexsyTypography.Display.copy(
+                                    fontSize = 28.sp,
+                                    lineHeight = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            description?.let { desc ->
+                                Text(
+                                    text = desc,
+                                    style = BlexsyTypography.Subtitle.copy(
+                                        fontSize = 13.sp,
+                                        color = Color.White.copy(alpha = 0.85f)
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                            if (isLoading) {
+                                SkeletonLine(modifier = Modifier.width(96.dp), height = 12.dp)
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.playlist_tracks_bangers, tracks.size),
+                                    style = BlexsyTypography.Caption.copy(
+                                        color = Color.White.copy(alpha = 0.8f)
+                                    ),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            if (!isLoading && tracks.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(18.dp))
+                                BlexsyButton(
+                                    text = stringResource(if (isPlaylistPlaying) R.string.player_pause else R.string.player_play),
+                                    onClick = {
+                                        if (isPlaylistPlaying) {
+                                            player.pause()
+                                        } else {
+                                            player.play(tracks.first(), tracks, title)
+                                        }
+                                    },
+                                    leadingIcon = if (isPlaylistPlaying) IcPause else IcPlay,
+                                    variant = ButtonVariant.Primary,
+                                    size = ButtonSize.Md,
+                                    modifier = Modifier.widthIn(min = 160.dp, max = 220.dp)
+                                )
+                            }
+                        }
+                    }
+                }
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            if (isLoading) {
-                // Placeholder rows while a remote playlist is being fetched: keeps the hero
-                // (title + cover are already known) and avoids flashing a single "Unknown track".
-                items(8) { SkeletonTrackRow() }
-            } else {
-                itemsIndexed(tracks) { index, track ->
-                    TrackTile(
-                        track = track,
-                        index = index,
-                        isPlayingThis = activeTrack?.id == track.id,
-                        onClick = { player.play(track, tracks, title) },
-                        onMore = { onTrackOptions(track, tracks) }
-                    )
+                if (isLoading) {
+                    // Placeholder rows while a remote playlist is being fetched: keeps the hero
+                    // (title + cover are already known) and avoids flashing a single "Unknown track".
+                    items(8) { SkeletonTrackRow() }
+                } else {
+                    itemsIndexed(tracks) { index, track ->
+                        TrackTile(
+                            track = track,
+                            index = index,
+                            isPlayingThis = activeTrack?.id == track.id,
+                            isFavorite = favorites.any { it.id == track.id },
+                            onToggleFavorite = onToggleFavorite?.let { cb -> { cb(track) } },
+                            onClick = { player.play(track, tracks, title) },
+                            onMore = { onTrackOptions(track, tracks) }
+                        )
+                    }
                 }
             }
         }
 
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter),
-            color = BlexsyColors.Background.copy(alpha = topBarAlpha),
-            shadowElevation = if (topBarAlpha > 0.8f) 4.dp else 0.dp
-        ) {
-            Row(
+        if (!layout.useTwoPaneDetail) {
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = 4.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.TopCenter),
+                color = BlexsyColors.Background.copy(alpha = topBarAlpha),
+                shadowElevation = if (topBarAlpha > 0.8f) 4.dp else 0.dp
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = IcArrowLeft,
-                        contentDescription = stringResource(R.string.action_back),
-                        tint = BlexsyColors.TextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = title,
-                    style = BlexsyTypography.Title.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BlexsyColors.TextPrimary
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer { alpha = topBarAlpha }
-                )
-                if (onDeletePlaylist != null) {
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = 4.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(
-                        onClick = { showDeleteConfirm = true },
-                        modifier = Modifier.size(40.dp)
+                        onClick = onBack,
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            imageVector = IcTrashFilled,
-                            contentDescription = stringResource(R.string.playlist_delete_content_desc),
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(22.dp)
+                            imageVector = IcArrowLeft,
+                            contentDescription = stringResource(R.string.action_back),
+                            tint = BlexsyColors.TextPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = title,
+                        style = BlexsyTypography.Title.copy(
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BlexsyColors.TextPrimary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { alpha = topBarAlpha }
+                    )
+                    if (onDeletePlaylist != null) {
+                        IconButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = IcTrashFilled,
+                                contentDescription = stringResource(R.string.playlist_delete_content_desc),
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }

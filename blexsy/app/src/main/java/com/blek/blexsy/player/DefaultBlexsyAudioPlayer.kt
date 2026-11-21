@@ -52,24 +52,26 @@ class DefaultBlexsyAudioPlayer(
     }
 
     override fun play(track: Track, newQueue: List<Track>, contextTitle: String?) {
+        val playableQueue = newQueue.filter { it.isPlayable }
+        val targetTrack = if (track.isPlayable) track else playableQueue.firstOrNull() ?: return
         _queueSource.value = QueueSource.CONTEXT
         _contextTitle.value = contextTitle
-        if (_currentTrack.value?.id == track.id) {
+        if (_currentTrack.value?.id == targetTrack.id) {
             if (!_isPlaying.value) {
                 resume()
             }
             return
         }
-        val rawQueue = if (newQueue.isEmpty()) listOf(track) else newQueue
-        val trackIdx = rawQueue.indexOfFirst { it.id == track.id }
+        val rawQueue = if (playableQueue.isEmpty()) listOf(targetTrack) else playableQueue
+        val trackIdx = rawQueue.indexOfFirst { it.id == targetTrack.id }
         val queue = if (trackIdx != -1) {
             rawQueue.drop(trackIdx)
         } else {
-            listOf(track) + rawQueue.filterNot { it.id == track.id }
+            listOf(targetTrack) + rawQueue.filterNot { it.id == targetTrack.id }
         }
-        _currentTrack.value = track
+        _currentTrack.value = targetTrack
         _queue.value = queue
-        _durationMs.value = track.durationMs ?: 0L
+        _durationMs.value = targetTrack.durationMs ?: 0L
         _positionMs.value = 0L
         _isPlaying.value = true
         startTicker()

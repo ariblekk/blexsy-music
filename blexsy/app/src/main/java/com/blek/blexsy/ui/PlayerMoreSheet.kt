@@ -85,7 +85,7 @@ internal fun PlayerMoreSheet(
             val playbackItems = listOfNotNull(
                 if (canSaveToLibrary) {
                     SheetOptionItem(
-                        icon = if (isFavorite) IcHeartFilled else IcHeartOutline,
+                        icon = if (isFavorite) IcCheckCircleFilled else IcPlusCircleOutline,
                         label = if (isFavorite) stringResource(R.string.player_remove_favorite) else stringResource(R.string.player_save_favorite),
                         tint = if (isFavorite) BlexsyColors.Primary else BlexsyColors.TextPrimary,
                         onClick = onToggleFavorite
