@@ -16,6 +16,15 @@ android {
         versionName = "1.0.4"
     }
 
+    splits {
+        abi {
+            isEnable = project.hasProperty("splitAbi")
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     signingConfigs {
         create("release") {
             val keystore = file("release.jks")

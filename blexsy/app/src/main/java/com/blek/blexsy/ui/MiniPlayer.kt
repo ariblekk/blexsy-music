@@ -2,14 +2,25 @@ package com.blek.blexsy.ui
 
 import com.blek.blexsy.R
 import androidx.compose.ui.res.stringResource
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,24 +44,34 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blek.blexsy.player.BlexsyAudioPlayer
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
-/** Full-rounded pill mini player with circular progress encircling cover art. */
+/**
+ * Full-rounded pill mini player with circular progress encircling cover art
+ * and fluid horizontal swipe gestures (Artwork + Title + Artist glide together).
+ */
 @Composable
 fun MiniPlayer(
     player: BlexsyAudioPlayer,
@@ -59,11 +80,19 @@ fun MiniPlayer(
     modifier: Modifier = Modifier
 ) {
     val track by player.currentTrack.collectAsState()
-    val dominantColor = rememberDominantColor(track?.image)
+    val (gradPrimary, gradSecondary) = rememberArtworkGradientColors(track?.image)
+    val dominantColor = gradPrimary
     val isPlaying by player.isPlaying.collectAsState()
     val isBuffering by player.isBuffering.collectAsState()
     val pos by player.positionMs.collectAsState()
     val dur by player.durationMs.collectAsState()
+    val haptic = rememberBlexsyHaptic()
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val swipeThresholdPx = with(density) { 54.dp.toPx() }
+    val maxDragPx = with(density) { 120.dp.toPx() }
+    val dragOffsetX = remember { Animatable(0f) }
+    var lastSwipeDirection by remember { mutableIntStateOf(-1) } // -1 = next (left), +1 = prev (right)
 
     AnimatedVisibility(
         visible = track != null,
@@ -91,8 +120,7 @@ fun MiniPlayer(
                     modifier = Modifier
                         .widthIn(max = 640.dp)
                         .fillMaxWidth(),
-                    // ponytail: 80% opacity glass matching player header; upgrade to RenderEffect blur when minSdk >= 31.
-                    color = BlexsyColors.SurfaceContainerHigh.copy(alpha = 0.80f),
+                    color = BlexsyColors.SurfaceContainerHigh.copy(alpha = 0.84f),
                     contentColor = BlexsyColors.TextPrimary,
                     shape = CircleShape,
                     shadowElevation = 6.dp
@@ -101,30 +129,80 @@ fun MiniPlayer(
                         modifier = (if (includeNavigationBars) Modifier.navigationBarsPadding() else Modifier)
                             .background(
                                 Brush.horizontalGradient(
-                                    0.00f to dominantColor.copy(alpha = 0.45f),
-                                    0.18f to dominantColor.copy(alpha = 0.38f),
-                                    0.35f to dominantColor.copy(alpha = 0.28f),
-                                    0.52f to dominantColor.copy(alpha = 0.17f),
-                                    0.70f to dominantColor.copy(alpha = 0.08f),
-                                    0.88f to dominantColor.copy(alpha = 0.02f),
-                                    1.00f to dominantColor.copy(alpha = 0.00f)
+                                    0.00f to gradPrimary.copy(alpha = 0.42f),
+                                    0.28f to gradPrimary.copy(alpha = 0.28f),
+                                    0.58f to gradSecondary.copy(alpha = 0.14f),
+                                    0.85f to gradSecondary.copy(alpha = 0.04f),
+                                    1.00f to Color.Transparent
                                 )
                             )
-                            // Dither grain: breaks up 8-bit quantization banding lines
                             .drawBehind {
                                 drawRect(brush = FrostGrainBrush, alpha = FrostGrainAlpha)
                             }
                             .border(
                                 width = 1.dp,
                                 brush = Brush.horizontalGradient(
-                                    0.00f to dominantColor.copy(alpha = 0.55f),
-                                    0.35f to dominantColor.copy(alpha = 0.25f),
-                                    0.70f to Color.White.copy(alpha = 0.08f),
-                                    1.00f to Color.White.copy(alpha = 0.14f)
+                                    0.00f to gradPrimary.copy(alpha = 0.48f),
+                                    0.40f to gradPrimary.copy(alpha = 0.22f),
+                                    0.75f to Color.White.copy(alpha = 0.08f),
+                                    1.00f to Color.White.copy(alpha = 0.12f)
                                 ),
                                 shape = CircleShape
                             )
                             .clip(CircleShape)
+                            .pointerInput(currentTrack.id) {
+                                detectHorizontalDragGestures(
+                                    onDragEnd = {
+                                        val finalOffset = dragOffsetX.value
+                                        when {
+                                            finalOffset <= -swipeThresholdPx -> {
+                                                lastSwipeDirection = -1
+                                                haptic.click()
+                                                scope.launch {
+                                                    // Snap back smoothly while AnimatedContent slides the new track in
+                                                    dragOffsetX.snapTo(0f)
+                                                }
+                                                player.next()
+                                            }
+                                            finalOffset >= swipeThresholdPx -> {
+                                                lastSwipeDirection = 1
+                                                haptic.click()
+                                                scope.launch {
+                                                    dragOffsetX.snapTo(0f)
+                                                }
+                                                player.previous()
+                                            }
+                                            else -> {
+                                                scope.launch {
+                                                    dragOffsetX.animateTo(
+                                                        targetValue = 0f,
+                                                        animationSpec = spring(dampingRatio = 0.76f, stiffness = 420f)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        scope.launch {
+                                            dragOffsetX.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(dampingRatio = 0.76f, stiffness = 420f)
+                                            )
+                                        }
+                                    },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        change.consume()
+                                        scope.launch {
+                                            // Progressive rubber-band resistance as the user drags further
+                                            val currentRatio = (abs(dragOffsetX.value) / maxDragPx).coerceIn(0f, 1f)
+                                            val resistance = 0.78f * (1f - currentRatio * 0.55f)
+                                            val next = (dragOffsetX.value + dragAmount * resistance)
+                                                .coerceIn(-maxDragPx, maxDragPx)
+                                            dragOffsetX.snapTo(next)
+                                        }
+                                    }
+                                )
+                            }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = ripple(color = dominantColor.copy(alpha = 0.50f)),
@@ -133,64 +211,114 @@ fun MiniPlayer(
                             .padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Circular progress ring encircling the rounded cover art
-                        Box(
-                            modifier = Modifier.size(46.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxSize(),
-                                color = BlexsyColors.Primary,
-                                trackColor = Color.White.copy(alpha = 0.12f),
-                                strokeWidth = 2.5.dp,
-                                strokeCap = StrokeCap.Round
-                            )
-                            CoverImage(
-                                url = currentTrack.image,
-                                size = 38,
-                                shapeRadius = 19,
-                                modifier = Modifier.clip(CircleShape)
-                            )
-                        }
+                        // Artwork + Circular Progress + Title + Artist slide & morph together as one unit
+                        AnimatedContent(
+                            targetState = currentTrack,
+                            transitionSpec = {
+                                val dir = if (lastSwipeDirection < 0) 1 else -1
+                                val enterSlide = slideInHorizontally(
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                    initialOffsetX = { fullWidth -> dir * (fullWidth * 2 / 5) }
+                                ) + fadeIn(
+                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.96f,
+                                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                                )
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                                val exitSlide = slideOutHorizontally(
+                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                    targetOffsetX = { fullWidth -> -dir * (fullWidth * 2 / 5) }
+                                ) + fadeOut(
+                                    animationSpec = tween(durationMillis = 160)
+                                ) + scaleOut(
+                                    targetScale = 0.96f,
+                                    animationSpec = tween(durationMillis = 180)
+                                )
 
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = currentTrack.displayTitle,
-                                style = BlexsyTypography.Title.copy(
-                                    fontSize = 14.sp,
-                                    lineHeight = 18.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    shadow = Shadow(
-                                        color = Color.Black.copy(alpha = 0.30f),
-                                        offset = Offset(0f, 1f),
-                                        blurRadius = 8f
+                                enterSlide togetherWith exitSlide
+                            },
+                            contentKey = { it.id },
+                            label = "mini_player_full_track_slide",
+                            modifier = Modifier
+                                .weight(1f)
+                                .graphicsLayer {
+                                    val offset = dragOffsetX.value
+                                    val progressRatio = (abs(offset) / maxDragPx).coerceIn(0f, 1f)
+                                    translationX = offset
+                                    alpha = (1f - progressRatio * 0.42f).coerceIn(0.45f, 1f)
+                                    val scale = 1f - progressRatio * 0.04f
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        ) { displayedTrack ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Circular progress ring encircling the rounded cover art
+                                Box(
+                                    modifier = Modifier.size(46.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        progress = { if (displayedTrack.id == currentTrack.id) progress else 0f },
+                                        modifier = Modifier.fillMaxSize(),
+                                        color = BlexsyColors.Primary,
+                                        trackColor = Color.White.copy(alpha = 0.12f),
+                                        strokeWidth = 2.5.dp,
+                                        strokeCap = StrokeCap.Round
                                     )
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(1.dp))
-                            Text(
-                                text = currentTrack.artist,
-                                style = BlexsyTypography.Subtitle.copy(
-                                    fontSize = 12.sp,
-                                    shadow = Shadow(
-                                        color = Color.Black.copy(alpha = 0.25f),
-                                        offset = Offset(0f, 1f),
-                                        blurRadius = 6f
+                                    CoverImage(
+                                        url = displayedTrack.image,
+                                        size = 38,
+                                        shapeRadius = 19,
+                                        modifier = Modifier.clip(CircleShape)
                                     )
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                                }
+
+                                Spacer(modifier = Modifier.width(10.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = displayedTrack.displayTitle,
+                                        style = BlexsyTypography.Title.copy(
+                                            fontSize = 14.sp,
+                                            lineHeight = 18.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            shadow = Shadow(
+                                                color = Color.Black.copy(alpha = 0.30f),
+                                                offset = Offset(0f, 1f),
+                                                blurRadius = 8f
+                                            )
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(1.dp))
+                                    Text(
+                                        text = displayedTrack.artist,
+                                        style = BlexsyTypography.Subtitle.copy(
+                                            fontSize = 12.sp,
+                                            shadow = Shadow(
+                                                color = Color.Black.copy(alpha = 0.25f),
+                                                offset = Offset(0f, 1f),
+                                                blurRadius = 6f
+                                            )
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
 
                         if (layout.isTablet) {
                             IconButton(
-                                onClick = { player.previous() },
+                                onClick = {
+                                    lastSwipeDirection = 1
+                                    player.previous()
+                                },
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
@@ -222,7 +350,10 @@ fun MiniPlayer(
                         }
 
                         IconButton(
-                            onClick = { player.next() },
+                            onClick = {
+                                lastSwipeDirection = -1
+                                player.next()
+                            },
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(

@@ -11,7 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -79,6 +81,7 @@ private fun getEffectiveWords(line: LyricLine, nextLineTimeMs: Long?): List<Lyri
 
 private val LYRIC_EASING = CubicBezierEasing(0.41f, 0f, 0.12f, 0.99f)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SyncedLyricsView(
     lyrics: LyricsResult?,
@@ -86,6 +89,7 @@ fun SyncedLyricsView(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = true,
     onSeek: ((Long) -> Unit)? = null,
+    onShareLine: ((Int) -> Unit)? = null,
     showTranslation: Boolean = false,
     translatedLines: Map<Int, String> = emptyMap(),
     isTranslating: Boolean = false,
@@ -385,10 +389,17 @@ fun SyncedLyricsView(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(
+                            .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onSeek?.invoke(line.timeMs) }
+                                indication = null,
+                                onClick = { onSeek?.invoke(line.timeMs) },
+                                onLongClick = {
+                                    if (onShareLine != null) {
+                                        haptic.click()
+                                        onShareLine(idx)
+                                    }
+                                }
+                            )
                             .padding(vertical = if (showTranslation && !translation.isNullOrBlank()) 10.dp else 12.dp)
                             .graphicsLayer {
                                 this.alpha = animatedAlpha

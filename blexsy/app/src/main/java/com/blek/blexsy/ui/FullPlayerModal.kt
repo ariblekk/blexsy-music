@@ -180,6 +180,7 @@ fun FullPlayerModal(
     var showSelectArtistSheet by remember { mutableStateOf(false) }
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var shareLyricsLineIndex by remember(track.id) { mutableStateOf<Int?>(null) }
     var newPlaylistName by remember { mutableStateOf("") }
     // Every artist gets an entry; entries without a catalog id are resolved by name on tap.
     val artists = track.artistRefs
@@ -607,7 +608,8 @@ fun FullPlayerModal(
                                         contentScrollConnection = contentScrollConnection,
                                         sharedScope = this@SharedTransitionLayout,
                                         animatedVisibilityScope = this,
-                                        showFloatingTrackCard = false
+                                        showFloatingTrackCard = false,
+                                        onShareLine = { lineIdx -> shareLyricsLineIndex = lineIdx }
                                     )
                                 }
                             }
@@ -669,7 +671,8 @@ fun FullPlayerModal(
                                             dominantColor = dominantColor,
                                             contentScrollConnection = contentScrollConnection,
                                             sharedScope = this@SharedTransitionLayout,
-                                            animatedVisibilityScope = this
+                                            animatedVisibilityScope = this,
+                                            onShareLine = { lineIdx -> shareLyricsLineIndex = lineIdx }
                                         )
 
                                         FullPlayerView.QUEUE -> PlayerQueueView(
@@ -879,6 +882,20 @@ fun FullPlayerModal(
                 track = track,
                 onDismiss = { showSleepTimerDialog = false },
                 onPause = { player.pause() }
+            )
+        }
+
+        val activeShareLineIdx = shareLyricsLineIndex
+        val parsedLinesForShare = lyricsResult?.parsedLines.orEmpty()
+        if (activeShareLineIdx != null && parsedLinesForShare.isNotEmpty()) {
+            LyricsShareCardDialog(
+                track = track,
+                lines = parsedLinesForShare,
+                initialLineIndex = activeShareLineIdx,
+                translatedLines = translatedLyrics,
+                dominantColor = dominantColor,
+                api = api,
+                onDismiss = { shareLyricsLineIndex = null }
             )
         }
     }

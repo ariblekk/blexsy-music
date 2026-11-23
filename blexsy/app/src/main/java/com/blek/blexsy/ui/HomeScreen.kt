@@ -511,6 +511,7 @@ fun HomeScreen(
         {
             BottomNav(
                 selectedIndex = selectedTab,
+                artworkUrl = activeTrack?.image,
                 onSelect = { index ->
                     selectedTab = index
                     screenStack = listOf(BlexsyScreen.Main)
@@ -612,11 +613,15 @@ fun HomeScreen(
                         SettingsScreen(
                             player = player,
                             onBack = ::popBack,
-                            onOpenEqualizer = { navigateTo(BlexsyScreen.Equalizer) }
+                            onOpenEqualizer = { navigateTo(BlexsyScreen.Equalizer) },
+                            onOpenPrivateVault = { navigateTo(BlexsyScreen.PrivateVault) }
                         )
                     }
                     is BlexsyScreen.Equalizer -> {
                         EqualizerScreen(onBack = ::popBack)
+                    }
+                    is BlexsyScreen.PrivateVault -> {
+                        PrivateVaultScreen(onBack = ::popBack)
                     }
                     is BlexsyScreen.PlaylistDetail -> {
                         // Every playlist here is local now (liked songs, profile playlists, library rows):
@@ -908,6 +913,7 @@ fun HomeScreen(
             if (!layout.useSideNav) {
                 BottomNav(
                     selectedIndex = selectedTab,
+                    artworkUrl = activeTrack?.image,
                     onSelect = { index ->
                         selectedTab = index
                         if (index != 1) {
@@ -956,6 +962,7 @@ fun HomeScreen(
                     if (!layout.useSideNav) {
                         BottomNav(
                             selectedIndex = selectedTab,
+                            artworkUrl = activeTrack?.image,
                             onSelect = { index ->
                                 selectedTab = index
                                 if (index != 1) {

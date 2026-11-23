@@ -8,45 +8,45 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.FilledTonalToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.blek.blexsy.player.BlexsyAudioPlayer
 import com.blek.blexsy.player.PlaybackRepeatMode
+import kotlin.math.abs
+import kotlin.math.sin
 
 /**
- * Scrubber, transport buttons, volume slider and the lyrics / queue toggles that
- * live under the player panels.
+ * SoundCloud-style waveform progress scrubber, transport buttons, volume slider and the
+ * lyrics / queue toggles that live under the player panels.
  */
 @Composable
 internal fun PlayerControls(
@@ -69,9 +69,18 @@ internal fun PlayerControls(
     onShowQueueChange: (Boolean) -> Unit
 ) {
     val haptic = rememberBlexsyHaptic()
+    val currentTrack by player.currentTrack.collectAsState()
     val maxDur = (if (durationMs > 0) durationMs else 1L).toFloat()
     var dragFraction by remember(durationMs) { mutableFloatStateOf(0f) }
     val currentFraction = if (isScrubbing) dragFraction else if (durationMs > 0) (positionMs.toFloat() / maxDur).coerceIn(0f, 1f) else 0f
+
+    // Generate a deterministic, authentic SoundCloud-style track waveform signature per song
+    val waveformBars = remember(currentTrack?.id, currentTrack?.displayTitle) {
+        buildTrackWaveformProfile(
+            seedKey = "${currentTrack?.id.orEmpty()}-${currentTrack?.displayTitle.orEmpty()}-${currentTrack?.artist.orEmpty()}",
+            barCount = 68
+        )
+    }
 
     AnimatedVisibility(
         visible = !isOverlayMode || controlsVisible,
@@ -93,64 +102,38 @@ internal fun PlayerControls(
         ) {
             Spacer(modifier = Modifier.height(6.dp))
 
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp)
-                    .pointerInput(maxDur) {
-                        detectTapGestures { offset ->
-                            val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                            player.seekTo((fraction * maxDur).toLong())
-                        }
+            // SoundCloud-style Waveform Progress Scrubber
+            SoundCloudWaveformScrubber(
+                bars = waveformBars,
+                progressFraction = currentFraction,
+                isScrubbing = isScrubbing,
+                playedColor = BlexsyColors.Primary,
+                unplayedColor = BlexsyColors.TextPrimary.copy(alpha = 0.24f),
+                onTapFraction = { fraction ->
+                    haptic.tick()
+                    player.seekTo((fraction * maxDur).toLong())
+                },
+                onDragStartFraction = { fraction ->
+                    haptic.tick()
+                    onScrubbingChange(true)
+                    dragFraction = fraction
+                },
+                onDragFraction = { fraction ->
+                    val prevBucket = (dragFraction * waveformBars.size).toInt()
+                    val newBucket = (fraction * waveformBars.size).toInt()
+                    if (newBucket != prevBucket) {
+                        haptic.tick()
                     }
-                    .pointerInput(maxDur) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                onScrubbingChange(true)
-                                dragFraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                            },
-                            onDragEnd = {
-                                onScrubbingChange(false)
-                                player.seekTo((dragFraction * maxDur).toLong())
-                            },
-                            onDragCancel = { onScrubbingChange(false) },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                dragFraction = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                val trackWidthPx = constraints.maxWidth.toFloat()
-                val thumbDiameter = 12.dp
-                val thumbDiameterPx = with(LocalDensity.current) { thumbDiameter.toPx() }
-                val thumbOffsetPx = (currentFraction * (trackWidthPx - thumbDiameterPx)).coerceIn(0f, trackWidthPx - thumbDiameterPx)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(BlexsyColors.SurfaceContainerHighest.copy(alpha = 0.50f))
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(currentFraction)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(BlexsyColors.TextPrimary)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .offset { androidx.compose.ui.unit.IntOffset(thumbOffsetPx.toInt(), 0) }
-                        .size(thumbDiameter)
-                        .clip(CircleShape)
-                        .background(BlexsyColors.TextPrimary)
-                )
-            }
+                    dragFraction = fraction
+                },
+                onDragEnd = {
+                    onScrubbingChange(false)
+                    player.seekTo((dragFraction * maxDur).toLong())
+                },
+                onDragCancel = {
+                    onScrubbingChange(false)
+                }
+            )
 
             Row(
                 modifier = Modifier
@@ -161,7 +144,10 @@ internal fun PlayerControls(
                 val displayPos = if (isScrubbing) (dragFraction * maxDur).toLong() else positionMs
                 Text(
                     text = formatDuration(displayPos),
-                    style = BlexsyTypography.Caption.copy(fontFamily = MonoFont)
+                    style = BlexsyTypography.Caption.copy(
+                        fontFamily = MonoFont,
+                        color = if (isScrubbing) BlexsyColors.Primary else BlexsyColors.TextSecondary
+                    )
                 )
                 Text(
                     text = formatDuration(durationMs),
@@ -291,5 +277,141 @@ internal fun PlayerControls(
                 }
             }
         }
+    }
+}
+
+/**
+ * SoundCloud-inspired dual-layer (upper main waveform + lower mirrored reflection) progress bar.
+ */
+@Composable
+private fun SoundCloudWaveformScrubber(
+    bars: FloatArray,
+    progressFraction: Float,
+    isScrubbing: Boolean,
+    playedColor: Color,
+    unplayedColor: Color,
+    onTapFraction: (Float) -> Unit,
+    onDragStartFraction: (Float) -> Unit,
+    onDragFraction: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit
+) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .padding(vertical = 4.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    onTapFraction(fraction)
+                }
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                        onDragStartFraction(fraction)
+                    },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragCancel,
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val fraction = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
+                        onDragFraction(fraction)
+                    }
+                )
+            }
+    ) {
+        val count = bars.size
+        if (count == 0) return@Canvas
+
+        val totalW = size.width
+        val totalH = size.height
+        val slotW = totalW / count
+        val barW = (slotW * 0.56f).coerceIn(2.dp.toPx(), 4.5.dp.toPx())
+        val corner = CornerRadius(barW / 2f, barW / 2f)
+
+        // SoundCloud split: 66% upper main peak, 4% gap, 30% lower reflection
+        val baselineY = totalH * 0.68f
+        val gapPx = 1.5.dp.toPx()
+        val maxUpperH = (baselineY - gapPx * 0.5f).coerceAtLeast(4f)
+        val maxLowerH = (totalH - baselineY - gapPx * 0.5f).coerceAtLeast(2f)
+
+        val playheadX = progressFraction.coerceIn(0f, 1f) * totalW
+
+        for (i in 0 until count) {
+            val x = i * slotW + (slotW - barW) / 2f
+            val barCenter = x + barW / 2f
+            val amp = bars[i].coerceIn(0.14f, 1f)
+
+            // Slight magnification near the playhead when scrubbing
+            val scrubBoost = if (isScrubbing) {
+                val distPx = abs(barCenter - playheadX)
+                val radiusPx = slotW * 4.5f
+                if (distPx < radiusPx) 1f + 0.18f * (1f - distPx / radiusPx) else 1f
+            } else 1f
+
+            val upperH = (maxUpperH * amp * scrubBoost).coerceIn(barW, maxUpperH)
+            val lowerH = (maxLowerH * amp * 0.72f * scrubBoost).coerceIn(barW * 0.7f, maxLowerH)
+
+            val isPlayed = barCenter <= playheadX
+            val upperColor = if (isPlayed) playedColor else unplayedColor
+            val lowerColor = if (isPlayed) playedColor.copy(alpha = 0.42f) else unplayedColor.copy(alpha = 0.13f)
+
+            // Upper main bar
+            drawRoundRect(
+                color = upperColor,
+                topLeft = Offset(x, baselineY - gapPx * 0.5f - upperH),
+                size = Size(barW, upperH),
+                cornerRadius = corner
+            )
+
+            // Lower SoundCloud reflection bar
+            drawRoundRect(
+                color = lowerColor,
+                topLeft = Offset(x, baselineY + gapPx * 0.5f),
+                size = Size(barW, lowerH),
+                cornerRadius = corner
+            )
+        }
+    }
+}
+
+/**
+ * Builds a realistic song waveform envelope (intro -> verse -> chorus peaks -> bridge -> outro)
+ * seeded deterministically from the track ID & title so each song has its own consistent waveform.
+ */
+private fun buildTrackWaveformProfile(seedKey: String, barCount: Int): FloatArray {
+    var hash = 2166136261L
+    for (ch in seedKey) {
+        hash = (hash xor ch.code.toLong()) * 16777619L
+    }
+
+    fun nextRand(): Float {
+        hash = hash xor (hash shl 13)
+        hash = hash xor (hash ushr 7)
+        hash = hash xor (hash shl 17)
+        return ((hash and 0x7FFFFFFFL).toFloat() / 0x7FFFFFFFL.toFloat())
+    }
+
+    val p1 = nextRand() * 6.28f
+    val p2 = nextRand() * 6.28f
+    val p3 = nextRand() * 6.28f
+
+    return FloatArray(barCount) { idx ->
+        val t = idx.toFloat() / (barCount - 1).coerceAtLeast(1).toFloat()
+        // Song structure envelope (quieter intro & outro, energetic sections)
+        val introOutroEnv = when {
+            t < 0.08f -> 0.35f + (t / 0.08f) * 0.65f
+            t > 0.90f -> 0.30f + ((1f - t) / 0.10f) * 0.70f
+            else -> 1f
+        }
+        val sectionWave = 0.62f +
+            0.22f * sin(t * 14f + p1) +
+            0.16f * sin(t * 31f + p2) +
+            0.10f * sin(t * 57f + p3)
+        val transient = 0.72f + 0.48f * nextRand()
+        (introOutroEnv * sectionWave * transient).coerceIn(0.16f, 1.0f)
     }
 }

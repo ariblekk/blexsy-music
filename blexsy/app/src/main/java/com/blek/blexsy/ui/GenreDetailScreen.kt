@@ -297,17 +297,6 @@ private fun GenreHero(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = stringResource(R.string.genre_kicker),
-                style = BlexsyTypography.Caption.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                    color = Color.White.copy(alpha = 0.85f)
-                ),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
                 text = title,
                 style = BlexsyTypography.Display.copy(
                     fontSize = 28.sp,

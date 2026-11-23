@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -44,10 +45,29 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(
     player: BlexsyAudioPlayer? = null,
     onBack: () -> Unit,
-    onOpenEqualizer: () -> Unit = {}
+    onOpenEqualizer: () -> Unit = {},
+    onOpenPrivateVault: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptic = rememberBlexsyHaptic()
+    var versionTapCount by remember { mutableIntStateOf(0) }
+    var lastVersionTapAtMs by remember { mutableLongStateOf(0L) }
+
+    val handleVersionTap: () -> Unit = {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastVersionTapAtMs > 1200L) {
+            versionTapCount = 1
+        } else {
+            versionTapCount++
+        }
+        lastVersionTapAtMs = now
+        if (versionTapCount >= 5) {
+            versionTapCount = 0
+            haptic.click()
+            onOpenPrivateVault()
+        }
+    }
     val prefs = remember(context) { context.getSharedPreferences("blexsy_prefs", Context.MODE_PRIVATE) }
     val eqState by BlexsyEqualizer.state.collectAsState()
 
@@ -55,6 +75,7 @@ fun SettingsScreen(
     var keepPlayingClosed by remember { mutableStateOf(prefs.getBoolean("pref_keep_playing_closed", true)) }
     var saveLastState by remember { mutableStateOf(prefs.getBoolean("pref_save_last_state", true)) }
     var skipSilence by remember { mutableStateOf(prefs.getBoolean("pref_skip_silence", false)) }
+    var crossfadeSeconds by remember { mutableIntStateOf(prefs.getInt("pref_crossfade_seconds", 0)) }
     var translateLyrics by remember { mutableStateOf(prefs.getBoolean("pref_translate_lyrics", false)) }
     var keepAwakeLyrics by remember { mutableStateOf(prefs.getBoolean("pref_keep_screen_awake", false)) }
     var audioQuality by remember { mutableStateOf(AudioCacheManager.getAudioQuality(context)) }
@@ -68,6 +89,7 @@ fun SettingsScreen(
     var showColorDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showCrossfadeDialog by remember { mutableStateOf(false) }
     var showAboutSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -277,6 +299,17 @@ fun SettingsScreen(
                             player?.setSkipSilence(it)
                         }
                     )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        thickness = 0.5.dp
+                    )
+                    SettingsActionRow(
+                        title = "Crossfade & Gapless",
+                        subtitle = if (crossfadeSeconds <= 0) "Off (Gapless Playback)" else "$crossfadeSeconds detik transisi halus antar lagu",
+                        icon = IcRepeat,
+                        onClick = { showCrossfadeDialog = true }
+                    )
                 }
             }
 
@@ -314,7 +347,13 @@ fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .padding(top = 8.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = handleVersionTap
+                        )
+                        .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -609,6 +648,66 @@ fun SettingsScreen(
     }
 
     // Clear Cache Confirmation Alert Dialog
+    if (showCrossfadeDialog) {
+        val crossfadeOptions = listOf(
+            0 to "Off (Gapless Playback)",
+            3 to "3 detik",
+            5 to "5 detik",
+            8 to "8 detik",
+            12 to "12 detik"
+        )
+        ModalBottomSheet(
+            onDismissRequest = { showCrossfadeDialog = false },
+            containerColor = BlexsyColors.SurfaceContainerHigh,
+            contentColor = BlexsyColors.TextPrimary,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Crossfade & Gapless",
+                    style = BlexsyTypography.Title.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp),
+                    color = BlexsyColors.TextPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                crossfadeOptions.forEach { (sec, label) ->
+                    val selected = crossfadeSeconds == sec
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                crossfadeSeconds = sec
+                                prefs.edit().putInt("pref_crossfade_seconds", sec).apply()
+                                player?.setCrossfadeSeconds(sec)
+                                showCrossfadeDialog = false
+                            }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = null,
+                            colors = RadioButtonDefaults.colors(selectedColor = BlexsyColors.Primary)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = label,
+                            style = BlexsyTypography.Body,
+                            color = if (selected) BlexsyColors.Primary else BlexsyColors.TextPrimary
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (showClearCacheDialog) {
         AlertDialog(
             onDismissRequest = { showClearCacheDialog = false },
@@ -774,7 +873,26 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                            style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextSecondary, fontSize = 12.sp)
+                            style = BlexsyTypography.Caption.copy(color = BlexsyColors.TextSecondary, fontSize = 12.sp),
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    val now = android.os.SystemClock.elapsedRealtime()
+                                    if (now - lastVersionTapAtMs > 1200L) {
+                                        versionTapCount = 1
+                                    } else {
+                                        versionTapCount++
+                                    }
+                                    lastVersionTapAtMs = now
+                                    if (versionTapCount >= 5) {
+                                        versionTapCount = 0
+                                        showAboutSheet = false
+                                        haptic.click()
+                                        onOpenPrivateVault()
+                                    }
+                                }
+                            )
                         )
                     }
                 }

@@ -71,12 +71,6 @@ fun ProfileScreen(
     val isGuest = spotifySession == null
     var isPullRefreshing by remember { mutableStateOf(false) }
 
-    var selectedTab by remember { mutableStateOf(0) } // 0: SPINS, 1: HEARTS, 2: CRATES
-    val tabLabels = listOf(
-        stringResource(R.string.profile_stat_spins),
-        stringResource(R.string.profile_stat_hearts),
-        stringResource(R.string.profile_stat_crates)
-    )
     val todayLabel = stringResource(R.string.history_date_today)
     val yesterdayLabel = stringResource(R.string.history_date_yesterday)
     val recentLabel = stringResource(R.string.history_date_recent)
@@ -341,228 +335,65 @@ fun ProfileScreen(
                         }
                     }
 
-                    if (onOpenLogin != null) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        val linked = spotifySession
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .clickable(onClick = onOpenLogin),
-                            color = BlexsyColors.SurfaceContainerHigh
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = if (linked != null) {
-                                            "Spotify • @${linked.userId}"
-                                        } else {
-                                            "Connect Spotify Account"
-                                        },
-                                        style = BlexsyTypography.Title.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-                                        color = if (linked != null) BlexsyColors.Primary else BlexsyColors.TextPrimary
-                                    )
-                                    val subText = when (val st = spotifySyncState) {
-                                        is SpotifySyncState.Syncing -> st.status
-                                        is SpotifySyncState.Success -> "${st.summary.likedTracksCount} Liked • ${st.summary.playlistsCount} Playlists synced"
-                                        else -> if (linked != null) {
-                                            "Ketuk untuk sync ulang Liked Songs & Playlist Spotify"
-                                        } else {
-                                            "Login pakai cookie sp_dc atau Web untuk sync Liked Songs & Playlist"
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = subText,
-                                        style = BlexsyTypography.Caption.copy(fontSize = 12.sp),
-                                        color = BlexsyColors.TextSecondary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                BlexsyButton(
-                                    text = if (linked != null) "Sync / Manage" else "Connect",
-                                    onClick = onOpenLogin,
-                                    isLoading = spotifySyncState is SpotifySyncState.Syncing,
-                                    variant = if (linked != null) ButtonVariant.Secondary else ButtonVariant.Primary,
-                                    size = ButtonSize.Sm
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Segmented Pill Tabs: Spins / Hearts / Crates
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        BlexsyTabs(
-                            tabs = tabLabels,
-                            selectedIndex = selectedTab,
-                            onSelect = { selectedTab = it },
-                            fillMaxWidth = false
-                        )
-                    }
-                }
-
-            // Tab Content
+            // Listening History (Riwayat Diputar)
             if (isLoading) {
                 item {
                     ProfileListSkeleton()
                 }
             } else {
-                when (selectedTab) {
-                    0 -> {
-                        // Spins Tab
-                        if (recentTracks.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(40.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(IcHistory, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(stringResource(R.string.profile_spins_empty_title), style = BlexsyTypography.SectionTitle)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            stringResource(R.string.profile_spins_empty_desc),
-                                            style = BlexsyTypography.Caption
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            val groupedRecent = recentTracks.groupBy { formatHistoryDate(it.playedAt, todayLabel, yesterdayLabel, recentLabel) }
-                            groupedRecent.forEach { (dateHeader, tracksForDate) ->
-                                item {
-                                    Text(
-                                        text = dateHeader.uppercase(),
-                                        style = BlexsyTypography.Caption.copy(
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 1.sp,
-                                            color = BlexsyColors.TextMuted
-                                        ),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
-                                    )
-                                }
-                                itemsIndexed(tracksForDate) { index, track ->
-                                    val isSaved = favoriteTracks.any { it.id == track.id } ||
-                                        userPlaylists.any { pl -> pl.tracks.any { it.id == track.id } }
-                                    TrackTile(
-                                        track = track,
-                                        index = index,
-                                        isPlayingThis = activeTrack?.id == track.id,
-                                        isFavorite = isSaved,
-                                        onToggleFavorite = library?.let { repo -> { repo.toggleFavorite(track) } },
-                                        onOpenArtist = onOpenArtist,
-                                        onClick = {
-                                            player.play(track, recentTracks)
-                                        },
-                                        onMore = onTrackOptions?.let { cb -> { cb(track, recentTracks) } }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    1 -> {
-                        // Liked Tab
-                        if (favoriteTracks.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(40.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(IcHeartOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(stringResource(R.string.profile_hearts_empty_title), style = BlexsyTypography.SectionTitle)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            stringResource(R.string.profile_hearts_empty_desc),
-                                            style = BlexsyTypography.Caption
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            itemsIndexed(favoriteTracks) { index, track ->
-                                TrackTile(
-                                    track = track,
-                                    index = index,
-                                    isPlayingThis = activeTrack?.id == track.id,
-                                    isFavorite = true,
-                                    onOpenArtist = onOpenArtist,
-                                    onClick = {
-                                        player.play(track, favoriteTracks)
-                                    },
-                                    onToggleFavorite = library?.let { repo -> { repo.toggleFavorite(track) } },
-                                    onMore = onTrackOptions?.let { cb -> { cb(track, favoriteTracks) } }
+                if (recentTracks.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(IcHistory, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(stringResource(R.string.profile_spins_empty_title), style = BlexsyTypography.SectionTitle)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    stringResource(R.string.profile_spins_empty_desc),
+                                    style = BlexsyTypography.Caption
                                 )
                             }
                         }
                     }
-                    2 -> {
-                        // Playlists Tab
-                        if (userPlaylists.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(40.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(IcMusicNotes, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(stringResource(R.string.profile_crates_empty_title), style = BlexsyTypography.SectionTitle)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            stringResource(R.string.profile_crates_empty_desc),
-                                            style = BlexsyTypography.Caption
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            items(userPlaylists) { pl ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onOpenPlaylist?.invoke(pl) }
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        CoverImage(url = pl.coverImage, size = 52, shapeRadius = 4)
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = pl.name,
-                                                style = BlexsyTypography.Title.copy(fontWeight = FontWeight.SemiBold)
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = stringResource(R.string.profile_crate_bangers, pl.tracks.size),
-                                                style = BlexsyTypography.Subtitle.copy(fontSize = 12.sp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                } else {
+                    val groupedRecent = recentTracks.groupBy { formatHistoryDate(it.playedAt, todayLabel, yesterdayLabel, recentLabel) }
+                    groupedRecent.forEach { (dateHeader, tracksForDate) ->
+                        item {
+                            Text(
+                                text = dateHeader.uppercase(),
+                                style = BlexsyTypography.Caption.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = BlexsyColors.TextMuted
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
+                            )
+                        }
+                        itemsIndexed(tracksForDate) { index, track ->
+                            val isSaved = favoriteTracks.any { it.id == track.id } ||
+                                userPlaylists.any { pl -> pl.tracks.any { it.id == track.id } }
+                            TrackTile(
+                                track = track,
+                                index = index,
+                                isPlayingThis = activeTrack?.id == track.id,
+                                isFavorite = isSaved,
+                                onToggleFavorite = library?.let { repo -> { repo.toggleFavorite(track) } },
+                                onOpenArtist = onOpenArtist,
+                                onClick = {
+                                    player.play(track, recentTracks)
+                                },
+                                onMore = onTrackOptions?.let { cb -> { cb(track, recentTracks) } }
+                            )
                         }
                     }
                 }
@@ -576,6 +407,16 @@ fun ProfileScreen(
             title = stringResource(R.string.nav_profile),
             onDismiss = { showMoreSheet = false },
             items = listOfNotNull(
+                if (onOpenLogin != null) {
+                    ActionSheetItem(
+                        label = if (spotifySession != null) "Spotify Account (${spotifySession!!.displayName})" else "Connect Spotify (Cookie / Web)",
+                        icon = IcUser,
+                        onClick = {
+                            showMoreSheet = false
+                            onOpenLogin()
+                        }
+                    )
+                } else null,
                 if (onOpenSettings != null) {
                     ActionSheetItem(
                         label = stringResource(R.string.profile_more_settings),

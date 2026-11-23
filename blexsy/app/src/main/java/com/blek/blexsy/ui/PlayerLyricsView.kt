@@ -49,7 +49,8 @@ internal fun PlayerLyricsView(
     contentScrollConnection: NestedScrollConnection,
     sharedScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
-    showFloatingTrackCard: Boolean = true
+    showFloatingTrackCard: Boolean = true,
+    onShareLine: ((Int) -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
@@ -74,6 +75,7 @@ internal fun PlayerLyricsView(
                     onShowControls()
                     player.seekTo(it)
                 },
+                onShareLine = onShareLine,
                 showTranslation = showTranslation,
                 translatedLines = translatedLyrics,
                 isTranslating = isTranslating,
