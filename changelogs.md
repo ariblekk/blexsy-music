@@ -33,7 +33,6 @@ Format berkas mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id
 - **Standardized Aligned Track Numbers (`TrackTile`)**: Penyelarasan tampilan nomor urut lagu di semua daftar lagu (Playlist, Album, Artis, dan Koleksi) dengan slot nomor lebar tetap (26 dp) dan visualisasi status lagu aktif berwarna aksen hijau.
 - **New Releases Carousel & "Show all" Action**: Pembatasan carousel rilis baru di Home Feed maksimal 10 album, dilengkapi aksi _"Show all"_ menuju tampilan daftar rilis lengkap (`PlaylistDetail`).
 - **Unified Left-Aligned Segmented Tabs (`BlexsyTabs`)**: Segmented pill tabs pada halaman Profile, Equalizer, dan Artist distandarisasi rata kiri (_align-left_) dan membungkus lebar konten (_wrap-width_).
->>>>>>> f0d5f38da996ced5754fb7dff3678b887fef0b98
 - **Per-ABI Release APK Splits**: Dukungan pembuatan APK rilis terpisah per arsitektur (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`, dan `universal`) melalui opsi Gradle `-PsplitAbi`.
 
 ### Fixed & Improved
