@@ -25,9 +25,15 @@ Format berkas mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id
 - **Lucide Vector Icon System**: Mengganti seluruh set ikon aplikasi ke *Lucide Icons* berbasis Android Vector Drawable XML.
 - **Spotify-Style Save System (`+` / `✓`)**: Mengganti ikon hati dengan tombol `+` dan centang hijau `✓` yang terhubung langsung ke *Liked Bangers* serta pengelolaan multi-playlist dalam satu bottom sheet.
 - **Real-Time Two-Way Spotify Sync**: Sinkronisasi otomatis (*auto-sync*) saat aplikasi dibuka untuk *Liked Songs*, *Playlists*, *Saved Albums*, dan *Followed Artists*, serta sinkronisasi dua arah langsung saat menambah/menghapus lagu playlist dan *follow/unfollow* artis.
+<<<<<<< HEAD
 - **Standardized Aligned Track Numbers (`TrackTile`)**: Penyelarasan tampilan nomor urut lagu di semua daftar lagu (Playlist, Album, Artis, dan Koleksi) dengan slot nomor lebar tetap (28 dp) dan visualisasi status lagu aktif berwarna aksen hijau.
 - **Curated Home Feed Rails**: Halaman Home menampilkan rail *Made For You*, *Top 50 Chart*, *Trending Songs*, *Popular Artists*, *Your Favorite Artists* (khusus artis yang diikuti), dan *Playlist Collection*.
 - **Unified Left-Aligned Segmented Tabs (`BlexsyTabs`)**: Segmented pill tabs pada halaman Equalizer dan Rilis Diskografi Artis (`All`, `Albums`, `Singles & EPs`) distandarisasi rata kiri (_align-left_) dan membungkus lebar konten (_wrap-width_).
+=======
+- **Standardized Aligned Track Numbers (`TrackTile`)**: Penyelarasan tampilan nomor urut lagu di semua daftar lagu (Playlist, Album, Artis, dan Koleksi) dengan slot nomor lebar tetap (26 dp) dan visualisasi status lagu aktif berwarna aksen hijau.
+- **New Releases Carousel & "Show all" Action**: Pembatasan carousel rilis baru di Home Feed maksimal 10 album, dilengkapi aksi _"Show all"_ menuju tampilan daftar rilis lengkap (`PlaylistDetail`).
+- **Unified Left-Aligned Segmented Tabs (`BlexsyTabs`)**: Segmented pill tabs pada halaman Profile, Equalizer, dan Artist distandarisasi rata kiri (_align-left_) dan membungkus lebar konten (_wrap-width_).
+>>>>>>> f0d5f38da996ced5754fb7dff3678b887fef0b98
 - **Per-ABI Release APK Splits**: Dukungan pembuatan APK rilis terpisah per arsitektur (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`, dan `universal`) melalui opsi Gradle `-PsplitAbi`.
 
 ### Fixed & Improved
