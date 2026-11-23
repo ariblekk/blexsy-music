@@ -65,4 +65,5 @@ sealed class BlexsyScreen {
     ) : BlexsyScreen()
     object Settings : BlexsyScreen()
     object Equalizer : BlexsyScreen()
+    object PrivateVault : BlexsyScreen()
 }

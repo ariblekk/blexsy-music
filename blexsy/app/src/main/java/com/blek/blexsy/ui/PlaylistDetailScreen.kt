@@ -49,7 +49,7 @@ fun PlaylistDetailScreen(
     val activeTrack by player.currentTrack.collectAsState()
     val isPlaying by player.isPlaying.collectAsState()
     val listState = rememberLazyListState()
-    val dominantColor = rememberDominantColor(imageUrl)
+    val dominantColor = BlexsyColors.Background
     val topBarAlpha by remember {
         derivedStateOf {
             if (listState.firstVisibleItemIndex > 0) 1f
@@ -110,17 +110,7 @@ fun PlaylistDetailScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.playlist_kicker),
-                            style = BlexsyTypography.Caption.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                color = Color.White.copy(alpha = 0.85f)
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Spacer(modifier = Modifier.weight(1f))
                         if (onDeletePlaylist != null) {
                             IconButton(
                                 onClick = { showDeleteConfirm = true },
@@ -296,17 +286,6 @@ fun PlaylistDetailScreen(
                                 },
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = stringResource(R.string.playlist_kicker),
-                                style = BlexsyTypography.Caption.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp,
-                                    color = Color.White.copy(alpha = 0.85f)
-                                ),
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = title,
                                 style = BlexsyTypography.Display.copy(

@@ -266,11 +266,15 @@ class AndroidBlexsyAudioPlayer(
     }
 
     @Volatile private var skipDeadAirEnabled: Boolean = false
+    @Volatile private var crossfadeSeconds: Int = 0
     private var lastDeadAirSkipAtMs: Long = 0L
+    private var lastCrossfadeTriggerAtMs: Long = 0L
+    private var isCrossfadeFadeInActive: Boolean = false
 
     init {
         val appPrefs = appContext.getSharedPreferences("blexsy_prefs", Context.MODE_PRIVATE)
         skipDeadAirEnabled = appPrefs.getBoolean("pref_skip_silence", false)
+        crossfadeSeconds = appPrefs.getInt("pref_crossfade_seconds", 0).coerceIn(0, 12)
         exoPlayer.skipSilenceEnabled = false
 
         val shouldRestore = appPrefs.getBoolean("pref_save_last_state", true)
@@ -605,6 +609,14 @@ class AndroidBlexsyAudioPlayer(
     override fun setSkipSilence(enabled: Boolean) {
         skipDeadAirEnabled = enabled
         exoPlayer.skipSilenceEnabled = false
+    }
+
+    override fun setCrossfadeSeconds(seconds: Int) {
+        crossfadeSeconds = seconds.coerceIn(0, 12)
+        if (crossfadeSeconds == 0) {
+            isCrossfadeFadeInActive = false
+            exoPlayer.volume = 1f
+        }
     }
 
     override fun resume() {
@@ -1084,9 +1096,14 @@ class AndroidBlexsyAudioPlayer(
                     }
                     if (isOutro) {
                         val silentDurationMs = now - BlexsyEqualizer.audioProcessor.lastAudibleTimeMs
-                        if (silentDurationMs >= 2500L && now - lastDeadAirSkipAtMs > 3000L) {
+                        if (silentDurationMs >= 2500L && now - lastDeadAirSkipAtMs > 3000L && now - lastCrossfadeTriggerAtMs > 3000L) {
                             lastDeadAirSkipAtMs = now
+                            lastCrossfadeTriggerAtMs = now
                             BlexsyEqualizer.audioProcessor.resetAudibleTime()
+                            if (crossfadeSeconds > 0) {
+                                isCrossfadeFadeInActive = true
+                                exoPlayer.volume = 0.20f
+                            }
                             withContext(Dispatchers.Main) {
                                 if (_repeatMode.value == PlaybackRepeatMode.ONE) {
                                     seekTo(0L)
@@ -1097,6 +1114,58 @@ class AndroidBlexsyAudioPlayer(
                             }
                         }
                     }
+                }
+
+                // Smooth Crossfade & Gapless transition
+                val cfSec = crossfadeSeconds
+                if (cfSec > 0 && exoPlayer.playbackState == Player.STATE_READY) {
+                    val fadeMs = cfSec * 1000L
+                    val duration = _durationMs.value.takeIf { it > 0 } ?: exoPlayer.duration.takeIf { it > 0 } ?: 0L
+                    val remaining = duration - current
+                    val fadeInWindowMs = (fadeMs / 2L).coerceAtLeast(1200L)
+
+                    when {
+                        // 1. Fade-in at start of track after a crossfade transition
+                        isCrossfadeFadeInActive && current in 0L..fadeInWindowMs -> {
+                            val progress = (current.toFloat() / fadeInWindowMs.toFloat()).coerceIn(0f, 1f)
+                            exoPlayer.volume = (0.20f + 0.80f * progress).coerceIn(0.20f, 1f)
+                            if (progress >= 0.98f) {
+                                isCrossfadeFadeInActive = false
+                                exoPlayer.volume = 1f
+                            }
+                        }
+                        // 2. Fade-out near end of track & early gapless jump into next track
+                        duration > (fadeMs * 2L + 4000L) && remaining in 1L..fadeMs -> {
+                            isCrossfadeFadeInActive = false
+                            val progress = (remaining.toFloat() / fadeMs.toFloat()).coerceIn(0f, 1f)
+                            exoPlayer.volume = (0.18f + 0.82f * progress).coerceIn(0.18f, 1f)
+                            val canAdvance = _repeatMode.value != PlaybackRepeatMode.OFF ||
+                                exoPlayer.currentMediaItemIndex + 1 < exoPlayer.mediaItemCount
+                            if (remaining <= 260L && canAdvance && now - lastCrossfadeTriggerAtMs > 2500L && now - lastDeadAirSkipAtMs > 2500L) {
+                                lastCrossfadeTriggerAtMs = now
+                                lastDeadAirSkipAtMs = now
+                                isCrossfadeFadeInActive = true
+                                exoPlayer.volume = 0.20f
+                                BlexsyEqualizer.audioProcessor.resetAudibleTime()
+                                if (_repeatMode.value == PlaybackRepeatMode.ONE) {
+                                    seekTo(0L)
+                                    exoPlayer.play()
+                                } else {
+                                    next()
+                                }
+                            }
+                        }
+                        else -> {
+                            if (isCrossfadeFadeInActive && current > fadeInWindowMs) {
+                                isCrossfadeFadeInActive = false
+                            }
+                            if (exoPlayer.volume < 0.99f) {
+                                exoPlayer.volume = 1f
+                            }
+                        }
+                    }
+                } else if (exoPlayer.volume < 0.99f) {
+                    exoPlayer.volume = 1f
                 }
 
                 // ponytail: 4s disk throttle prevents I/O contention; upgrade to lifecycle flush if process termination is detected

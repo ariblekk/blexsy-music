@@ -37,7 +37,7 @@ data class ContributorsData(
  * ponytail: memory + SharedPreferences caching with hardcoded fallback; upgrade to room database if dynamic profiles grow.
  */
 object ContributorsService {
-    var remoteUrl: String = "https://github.com/ariblekk/soundpulse/blob/main/contributors.json"
+    var remoteUrl: String = "https://raw.githubusercontent.com/ariblekk/blexsy-music/refs/heads/main/contributors.json"
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val client by lazy { HttpClient(CIO) }
@@ -54,14 +54,14 @@ object ContributorsService {
             ContributorItem(
                 name = "Romy Jatmiko",
                 role = "Bug Hunter & Auth Middleware",
-                avatarUrl = "https://api.dicebear.com/7.x/identicon/svg?seed=Romy%20Jatmiko",
-                githubUrl = "https://github.com/romyjatmiko"
+                avatarUrl = "https://instagram.fcgk18-1.fna.fbcdn.net/v/t51.82787-19/724242684_18128506642621521_6819034126101877277_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=7-5&_nc_sid=f7ccc5&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=T7tI0leWoLcQ7kNvwEcVDNc&_nc_oc=Adr1ErUR0PD2B1v269DwUgwimHVkbkEuPjZvqbl5NG5KtxZOa3mbWweHwnG0n-IClJg&_nc_zt=24&_nc_ht=instagram.fcgk18-1.fna&_nc_gid=HPEk4d2S4x45exuvwYMiRQ&_nc_ss=7b6a8&oh=00_AQRaW8oNMidSQ4J1ZAq_7M20gzXF6dpxsXljqQ4IJ9GRqA&oe=6AEA5D47",
+                githubUrl = "https://www.instagram.com/jim_0r/"
             ),
             ContributorItem(
                 name = "Ridwan Saidi",
                 role = "Bug Hunter & Audio Lifecycle",
-                avatarUrl = "https://api.dicebear.com/7.x/identicon/svg?seed=Ridwan%20Saidi",
-                githubUrl = "https://github.com/ridwansaidi"
+                avatarUrl = "https://instagram.fcgk18-1.fna.fbcdn.net/v/t51.82787-19/750355989_18442402204190046_4128534047951000039_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=109&_nc_map=urlgen_bucketless&ccb=7-5&_nc_sid=f7ccc5&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=V01po6mGf0MQ7kNvwH7BpLq&_nc_oc=Adq6R8T8S4h_tzpzQ3ke6A_dIFA0FLHeoiPSxtUuvhiD6iCCzFUnON57t6X-60pesLM&_nc_zt=24&_nc_ht=instagram.fcgk18-1.fna&_nc_gid=ONfP9581SUcyqelR2KB5mA&_nc_ss=7b6a8&oh=00_AQTMCuGD-am-fPqOXoHrIr_8_9gRR69kjxxMxmlhy59Xjw&oe=6AEA3730",
+                githubUrl = "https://www.instagram.com/rdwn124_"
             )
         ),
         credits = listOf(

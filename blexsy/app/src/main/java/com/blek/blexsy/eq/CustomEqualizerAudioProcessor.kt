@@ -39,6 +39,17 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
     @Volatile var lastAudibleTimeMs: Long = android.os.SystemClock.elapsedRealtime()
         private set
 
+    @Volatile var currentRmsLevel: Float = 0f
+        private set
+    @Volatile var currentBassLevel: Float = 0f
+        private set
+    @Volatile var currentMidLevel: Float = 0f
+        private set
+    @Volatile var currentHighLevel: Float = 0f
+        private set
+    private var prevSample: Double = 0.0
+    private var lpState: Double = 0.0
+
     fun resetAudibleTime() {
         lastAudibleTimeMs = android.os.SystemClock.elapsedRealtime()
     }
@@ -81,11 +92,34 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
         ensureWork(count)
         val scale = 1.0 / 32768.0
         var peak = 0.0
+        var sumSq = 0.0
+        var bassSq = 0.0
+        var highSq = 0.0
+        var lp = lpState
+        var prev = prevSample
         for (i in 0 until count) {
             val sample = inputBuffer.getShort() * scale
             work[i] = sample
             val abs = kotlin.math.abs(sample)
             if (abs > peak) peak = abs
+            sumSq += sample * sample
+            lp = lp * 0.92 + sample * 0.08
+            bassSq += lp * lp
+            val diff = sample - prev
+            highSq += diff * diff
+            prev = sample
+        }
+        lpState = lp
+        prevSample = prev
+        if (count > 0) {
+            val rms = kotlin.math.sqrt(sumSq / count).toFloat()
+            val bass = (kotlin.math.sqrt(bassSq / count) * 3.2).toFloat().coerceIn(0f, 1f)
+            val high = (kotlin.math.sqrt(highSq / count) * 4.5).toFloat().coerceIn(0f, 1f)
+            val mid = (rms * 3.0f).coerceIn(0f, 1f)
+            currentRmsLevel = currentRmsLevel * 0.45f + (rms * 2.8f).coerceIn(0f, 1f) * 0.55f
+            currentBassLevel = currentBassLevel * 0.40f + bass * 0.60f
+            currentMidLevel = currentMidLevel * 0.45f + mid * 0.55f
+            currentHighLevel = currentHighLevel * 0.40f + high * 0.60f
         }
         if (peak > 0.003) {
             lastAudibleTimeMs = android.os.SystemClock.elapsedRealtime()

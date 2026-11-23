@@ -6,25 +6,37 @@ Format berkas mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id
 
 ---
 
-## [1.0.4] - 2026-10-31
+## [1.0.4] - 2026-11-24
 
-### ✨ Added
+### Added
 
-- **Zero-Backend Architecture (InnerTube + LRCLIB Direct)**: Migrasi seluruh pencarian lagu, tangga lagu Top Hits, kategori genre, playlist detail, detail artis, dan lirik sinkronisasi langsung dari client Android ke YouTube Music InnerTube (`WEB_REMIX`) dan LRCLIB tanpa ketergantungan server backend proxy (`/chart`, `/stream`, `/lyrics`).
-- **Client-Side Spotify Charts & New Releases**: Scraping langsung playlist Spotify Top 50 Indonesia (`37i9dQZEVXbObFQZ3JLcXt`) dan New Music Friday Indonesia (`37i9dQZF1DX8vAahjzdXGC`) langsung di sisi client Android via Spotify embed tanpa memerlukan Spotify Client ID / Client Secret, lengkap dengan disk caching ber-TTL 1 hari (24 jam) untuk render instan saat cold-start.
-- **Direct VISIONOS Audio Stream Engine**: Resolusi stream audio langsung via client YouTube InnerTube `VISIONOS` dengan header `Referer: https://www.youtube.com/`, menjamin bebas error 403 chunk URL tanpa backend redirect dan tanpa decipher JS cipher.
-- **Pure Studio Audio Enforcement (`MUSIC_VIDEO_TYPE_ATV`)**: Deteksi murni metadata trek untuk memfilter video YouTube (OMV), Shorts, live concert audio, dan rekaman cover amatir (UGC). Tangga lagu dan hasil pencarian menyajikan audio rekaman studio resmi dari label musik.
-- **Automatic Video-to-Song Audio Substitution**: Jika pengguna memutar lagu dari playlist kompilasi yang berisi music video (OMV), mesin otomatis mencari dan mengganti sumber streaming ke track audio studio resmi (ATV) dan menyaring noise dialog intro video.
+- **Hybrid Spotify Metadata Backend + Direct InnerTube Audio Architecture**: Seluruh pencarian katalog lagu (`/v1/search`), tangga lagu (`/v1/charts`), kategori genre (`/v1/browse`, `/v1/genre`), detail album (`/v1/album`), detail artis (`/v1/artist`), detail playlist (`/v1/playlist`), dan kredit lagu diambil dari backend metadata Spotify (`SpotifyMetadata` / `spotifree-rs` di `blexsy.blek.my.id`), sementara resolusi stream audio dan rekomendasi radio dijalankan langsung dari client ke YouTube Music InnerTube (`VISIONOS` & `WEB_REMIX`) serta lirik tersinkronisasi melalui `lrc.red` / `LRCLIB`.
+- **Spotify Charts, Trending & Popular Feeds**: Integrasi tangga lagu harian/mingguan Spotify, daftar lagu trending, album populer, dan artis populer dengan dukungan *disk cache* lokal (`ApiCache`) untuk pemuatan instan saat *cold-start*.
+- **Direct VISIONOS Audio Stream Engine**: Resolusi stream audio langsung via client YouTube InnerTube `VISIONOS` dengan header `Referer: https://www.youtube.com/`, menjamin bebas error 403 chunk URL tanpa backend redirect audio dan tanpa decipher JS cipher.
+- **Pure Studio Audio Stream Matching (`MUSIC_VIDEO_TYPE_ATV`)**: Saat memutar lagu dari katalog Spotify maupun mengambil rekomendasi radio, mesin pencocok `InnerTubeService` otomatis memprioritaskan rekaman studio resmi (`MUSIC_VIDEO_TYPE_ATV`) dan memfilter video klip (OMV), Shorts, live concert, maupun cover amatir (UGC) agar audio bebas dari dialog intro video klip.
 - **Mochy Parametric Equalizer**: Porting lengkap DSP equalizer biquad RBJ dari Mochy (`Biquad`, `PeakLimiter`, dan `CustomEqualizerAudioProcessor`) terintegrasi langsung ke audio sink ExoPlayer via Media3 `DefaultRenderersFactory`.
 - **10-Band Interactive EQ & Presets**: Menyediakan 14 profil preset bawaan (Flat, Bass Booster, Bass Reducer, Acoustic, Rock, Pop, Hip-Hop, Classical, Electronic, Jazz, Vocal Booster, dsb), kontrol Preamp (-12 dB s/d +12 dB), dan visualizer canvas interaktif (sweep-to-draw gesture dengan Catmull-Rom curve) yang tersimpan secara persisten pada SharedPreferences.
-- **Mochy-Style InnerTube Automix Queue & Infinite Radio**: Pengambilan rekomendasi radio dan infinite autoplay langsung menggunakan InnerTube YouTube Music `/youtubei/v1/next` (`RDAMVM...` automix playlist dan token continuation) dengan aturan `QueuePolicy`, mendukung `playNext`, `addToQueue`, reorder drag-and-drop, dan penghapusan item antrean tanpa backend.
+- **Mochy-Style InnerTube Automix Queue & Infinite Radio**: Pengambilan rekomendasi radio dan infinite autoplay langsung menggunakan InnerTube YouTube Music `/youtubei/v1/next` (`RDAMVM...` automix playlist dan token continuation) dengan aturan `QueuePolicy`, mendukung `playNext`, `addToQueue`, reorder drag-and-drop, dan penghapusan item antrean.
 - **Physical Audio Quality Selector**: Kontrol kualitas audio (Data Saver 48-64kbps Opus/AAC, Balanced 128kbps AAC/Opus, Crisp 160kbps Opus itag 251/140) aktif secara fisik dengan direct stream itags.
-- **Standardized Aligned Track Numbers (`TrackTile`)**: Penyelarasan tampilan nomor urut lagu di semua daftar lagu (Playlist, Album, Artis, dan Koleksi) dengan slot nomor lebar tetap (26 dp) dan visualisasi status lagu aktif berwarna aksen hijau.
-- **New Releases Carousel & "Show all" Action**: Pembatasan carousel rilis baru di Home Feed maksimal 10 album, dilengkapi aksi _"Show all"_ menuju tampilan daftar rilis lengkap (`PlaylistDetail`).
-- **Unified Left-Aligned Segmented Tabs (`BlexsyTabs`)**: Segmented pill tabs pada halaman Profile, Equalizer, dan Artist distandarisasi rata kiri (_align-left_) dan membungkus lebar konten (_wrap-width_).
+- **Custom Lyrics Share Card**: Tekan dan tahan (*long-press*) baris lirik pada halaman Synced Lyrics untuk membuat kartu lirik (ekspor PNG full-card) dengan seleksi hingga 5 baris berurutan, 9 palet warna latar, opsi latar gambar dari Artwork Lagu / Banner Artis / Foto Profil Artis, serta 4 pilihan gaya font (*Klasik*, *Lebar*, *Ramping*, *Miring*) dan dukungan terjemahan.
+- **SoundCloud-Style Waveform Progress Bar**: Scrubber di Full Player kini menampilkan visualisasi *dual-layer waveform* interaktif (bar utama + pantulan bawah) dengan efek *magnification* dan respons *haptic* saat digeser.
+- **Crossfade & Gapless Playback**: Pengaturan transisi antar lagu (`Off`, `3s`, `5s`, `8s`, `12s`) dengan *fade-out / fade-in* halus yang terintegrasi penuh bersama fitur *Lewati Bagian Hening (Skip Dead Air)* tanpa memicu *double-skip*.
+- **Interactive Swipe MiniPlayer & Ambient Artwork Tint**: Geser ke kiri atau kanan langsung pada bar MiniPlayer untuk berpindah lagu dengan animasi *spring* mulus beserta sampul lagunya, dilengkapi aksen gradasi warna halus (*ambient glow*) dari sampul lagu aktif pada MiniPlayer dan Bottom Navbar.
+- **Lucide Vector Icon System**: Mengganti seluruh set ikon aplikasi ke *Lucide Icons* berbasis Android Vector Drawable XML.
+- **Spotify-Style Save System (`+` / `✓`)**: Mengganti ikon hati dengan tombol `+` dan centang hijau `✓` yang terhubung langsung ke *Liked Bangers* serta pengelolaan multi-playlist dalam satu bottom sheet.
+- **Real-Time Two-Way Spotify Sync**: Sinkronisasi otomatis (*auto-sync*) saat aplikasi dibuka untuk *Liked Songs*, *Playlists*, *Saved Albums*, dan *Followed Artists*, serta sinkronisasi dua arah langsung saat menambah/menghapus lagu playlist dan *follow/unfollow* artis.
+- **Standardized Aligned Track Numbers (`TrackTile`)**: Penyelarasan tampilan nomor urut lagu di semua daftar lagu (Playlist, Album, Artis, dan Koleksi) dengan slot nomor lebar tetap (28 dp) dan visualisasi status lagu aktif berwarna aksen hijau.
+- **Curated Home Feed Rails**: Halaman Home menampilkan rail *Made For You*, *Top 50 Chart*, *Trending Songs*, *Popular Artists*, *Your Favorite Artists* (khusus artis yang diikuti), dan *Playlist Collection*.
+- **Unified Left-Aligned Segmented Tabs (`BlexsyTabs`)**: Segmented pill tabs pada halaman Equalizer dan Rilis Diskografi Artis (`All`, `Albums`, `Singles & EPs`) distandarisasi rata kiri (_align-left_) dan membungkus lebar konten (_wrap-width_).
+- **Per-ABI Release APK Splits**: Dukungan pembuatan APK rilis terpisah per arsitektur (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`, dan `universal`) melalui opsi Gradle `-PsplitAbi`.
 
-### 🐛 Fixed & Improved
+### Fixed & Improved
 
+- **Artist Discography & Detail Page Cleanup**: Menambahkan tab `"All"` pada bagian rilis diskografi artis (gabungan Album dan Singles & EPs terurut berdasarkan tahun), menyeragamkan warna latar halaman Artis, Playlist, dan Album ke warna tema gelap bawaan, serta menghapus teks label *kicker* berlebih di atas judul halaman.
+- **Streamlined Profile Page**: Menyederhanakan tampilan profil menjadi header akun, 3 statistik utama, dan daftar *Riwayat Diputar (Listening History)* secara langsung.
+- **Spotify Mosaic & Image URI Normalization**: Memperbaiki pembacaan URL cover playlist Spotify (`spotify:mosaic:...` dan `spotify:image:...`) agar sampul playlist selalu tampil.
+- **Unplayable / Taken-Down Track Filtering**: Lagu yang terkena *takedown* atau tidak tersedia (`isPlayable = false`) kini otomatis diredupkan, dinonaktifkan dari klik, dan dilewati otomatis dari antrean pemutaran.
+- **Hardware Bitmap Palette Extraction Fix**: Memperbaiki ekstraksi warna dominan sampul album pada Coil 3 (`allowHardware(false)`) agar warna aksen MiniPlayer, Navbar, dan Player selalu terdeteksi akurat.
 - **Dock Spacing Refinement**: Mengurangi celah vertikal antara floating `MiniPlayer` dan `BottomNav` menjadi lebih rapat dan terpadu (4 dp).
 - **Prevented YouTube Video Audio Leaks**: Mengganti sumber tangga lagu Home dari carousel video `FEmusic_explore` ke kurasi Top Hits studio murni, menghilangkan suara percakapan intro video, tepuk tangan live concert, dan rekaman cover amatir.
 - **Cleaned Video Tag Titles**: Pembersihan otomatis tag judul video (`(Official Music Video)`, `[Official Video]`, `(Live Session)`, dsb) pada UI pemutar dan daftar lagu.

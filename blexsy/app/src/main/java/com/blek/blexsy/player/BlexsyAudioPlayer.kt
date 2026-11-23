@@ -48,6 +48,7 @@ interface BlexsyAudioPlayer {
     fun previous()
     fun toggleRepeat()
     fun setSkipSilence(enabled: Boolean) {}
+    fun setCrossfadeSeconds(seconds: Int) {}
     fun removeFromQueue(index: Int) {}
     fun reorderQueue(fromIndex: Int, toIndex: Int) {}
     fun clearQueue() {}

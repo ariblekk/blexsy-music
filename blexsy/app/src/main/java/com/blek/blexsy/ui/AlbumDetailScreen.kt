@@ -54,7 +54,7 @@ fun AlbumDetailScreen(
     val activeTrack by player.currentTrack.collectAsState()
     val isPlaying by player.isPlaying.collectAsState()
     val listState = rememberLazyListState()
-    val dominantColor = rememberDominantColor(album?.image)
+    val dominantColor = BlexsyColors.Background
     val topBarAlpha by remember {
         derivedStateOf {
             if (listState.firstVisibleItemIndex > 0) 1f
@@ -153,16 +153,6 @@ fun AlbumDetailScreen(
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = a.type.uppercase(),
-                                style = BlexsyTypography.Caption.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp,
-                                    color = Color.White.copy(alpha = 0.85f)
-                                )
-                            )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -333,17 +323,6 @@ fun AlbumDetailScreen(
                                     },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(
-                                    text = a.type.uppercase(),
-                                    style = BlexsyTypography.Caption.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.2.sp,
-                                        color = Color.White.copy(alpha = 0.85f)
-                                    ),
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = a.name,
                                     style = BlexsyTypography.Display.copy(

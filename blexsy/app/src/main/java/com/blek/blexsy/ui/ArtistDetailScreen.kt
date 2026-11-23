@@ -78,7 +78,7 @@ fun ArtistDetailScreen(
     val activeTrack by player.currentTrack.collectAsState()
     val isPlaying by player.isPlaying.collectAsState()
     val listState = remember(artistId) { androidx.compose.foundation.lazy.LazyListState() }
-    val dominantColor = rememberDominantColor(artist?.banner ?: artist?.image)
+    val dominantColor = BlexsyColors.Background
     val topBarAlpha by remember {
         derivedStateOf {
             if (listState.firstVisibleItemIndex > 0) 1f

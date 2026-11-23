@@ -517,33 +517,6 @@ internal fun ArtistStyleHeroCarousel(
                         .weight(1f)
                         .padding(end = 16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (isPlayingThis) {
-                            Icon(
-                                imageVector = IcPlay,
-                                contentDescription = stringResource(R.string.a11y_playing),
-                                tint = BlexsyColors.Primary,
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
-                        Text(
-                            text = when {
-                                isPausedThis -> stringResource(R.string.listen_pick_resume)
-                                isPlayingThis -> stringResource(R.string.listen_pick_now_spinning)
-                                else -> stringResource(R.string.listen_pick_artist)
-                            },
-                            style = BlexsyTypography.Caption.copy(
-                                color = BlexsyColors.Primary,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = track.displayTitle,
                         style = BlexsyTypography.Display.copy(
@@ -647,27 +620,6 @@ private fun FeaturedCardLayout(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(BlexsyColors.SurfaceContainer)
-                    )
-                }
-
-                // Kicker badge top-left
-                val kickerText = item.kicker.trim().ifBlank { "FEATURED" }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.65f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = kickerText,
-                        style = BlexsyTypography.Caption.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            letterSpacing = 0.4.sp
-                        )
                     )
                 }
 

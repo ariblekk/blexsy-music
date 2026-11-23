@@ -284,12 +284,13 @@ fun rememberBlexsyHaptic(): BlexsyHaptic {
     }
 }
 
-/** Compact floating rounded bottom navigation with iOS-style spring sliding pill. */
+/** Compact floating rounded bottom navigation with iOS-style spring sliding pill and dynamic artwork gradient. */
 @Composable
 fun BottomNav(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    artworkUrl: String? = null
 ) {
     val tabs = listOf(
         Triple(stringResource(R.string.nav_home), IcHouse, IcHouse),
@@ -300,6 +301,8 @@ fun BottomNav(
 
     val currentSelectedIndex by rememberUpdatedState(selectedIndex)
     val currentOnSelect by rememberUpdatedState(onSelect)
+    val (gradPrimary, gradSecondary) = rememberArtworkGradientColors(artworkUrl)
+    val hasArtworkTint = !artworkUrl.isNullOrBlank()
 
     // ponytail: iOS-style sliding pill with spring physics; upgrade to full HorizontalPager if screen content supports horizontal swipe.
     val animatedIndex by animateFloatAsState(
@@ -321,19 +324,44 @@ fun BottomNav(
                 .fillMaxWidth()
                 .height(58.dp),
             shape = CircleShape,
-            color = BlexsyColors.SurfaceContainerHigh.copy(alpha = 0.80f),
+            color = BlexsyColors.SurfaceContainerHigh.copy(alpha = 0.84f),
             contentColor = BlexsyColors.TextPrimary,
             shadowElevation = 6.dp
         ) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(
+                        if (hasArtworkTint) {
+                            Modifier.background(
+                                Brush.horizontalGradient(
+                                    0.00f to gradPrimary.copy(alpha = 0.34f),
+                                    0.32f to gradPrimary.copy(alpha = 0.22f),
+                                    0.65f to gradSecondary.copy(alpha = 0.10f),
+                                    1.00f to Color.Transparent
+                                )
+                            )
+                        } else Modifier
+                    )
                     .drawBehind {
                         drawRect(brush = FrostGrainBrush, alpha = FrostGrainAlpha)
                     }
                     .border(
                         width = 1.dp,
-                        color = Color.White.copy(alpha = 0.10f),
+                        brush = if (hasArtworkTint) {
+                            Brush.horizontalGradient(
+                                0.00f to gradPrimary.copy(alpha = 0.42f),
+                                0.45f to gradPrimary.copy(alpha = 0.18f),
+                                1.00f to Color.White.copy(alpha = 0.10f)
+                            )
+                        } else {
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.10f),
+                                    Color.White.copy(alpha = 0.10f)
+                                )
+                            )
+                        },
                         shape = CircleShape
                     )
                     .padding(horizontal = 4.dp, vertical = 4.dp)
